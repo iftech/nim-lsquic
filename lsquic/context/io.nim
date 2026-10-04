@@ -106,8 +106,8 @@ proc packetIn*(
     remote: TransportAddress,
     ecn: cint = 0,
 ): bool {.discardable.} =
-  ## Returns false when the datagram was not handed to the engine because it is
-  ## empty or the context has stopped. The engine's return code is not exposed.
+  ## Returns false when the datagram was not handed to the engine or the engine
+  ## reports an error while accepting it.
   if data.len == 0 or not ctx.isRunning():
     return false
 
@@ -120,7 +120,7 @@ proc packetIn*(
   local.toSAddr(localAddress, localAddrLen)
   remote.toSAddr(remoteAddress, remoteAddrLen)
 
-  discard lsquic_engine_packet_in(
+  let status = lsquic_engine_packet_in(
     ctx.engine,
     cast[ptr uint8](addr data[0]),
     data.len.csize_t,
@@ -130,7 +130,7 @@ proc packetIn*(
     ecn,
   )
 
-  true
+  status >= 0
 
 proc sendPacketsOut*(
     ctx: pointer, specs: ptr struct_lsquic_out_spec, nspecs: cuint
