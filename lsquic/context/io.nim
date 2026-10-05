@@ -130,7 +130,11 @@ proc packetIn*(
     ecn,
   )
 
-  status >= 0
+  if status < 0:
+    trace "Failed to process UDP datagram", bytes = data.len, local, remote
+    return false
+
+  true
 
 proc sendPacketsOut*(
     ctx: pointer, specs: ptr struct_lsquic_out_spec, nspecs: cuint

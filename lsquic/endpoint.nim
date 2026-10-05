@@ -161,34 +161,34 @@ proc routeDatagram(
   # parsing the connection id out of every datagram and probing the CID set.
   if hasClientContext != hasServerContext:
     if hasClientContext:
-      endpoint.clientContext.packetIn(data, local, remote)
+      discard endpoint.clientContext.packetIn(data, local, remote)
       return {rtClient}
-    endpoint.serverContext.packetIn(data, local, remote)
+    discard endpoint.serverContext.packetIn(data, local, remote)
     return {rtServer}
 
   var cid: CidKey
   if endpoint.packetDcid(data, cid):
     if hasClientContext and endpoint.clientContext.ownsCid(cid):
       trace "Routing datagram to client context by connection ID", cid
-      endpoint.clientContext.packetIn(data, local, remote)
+      discard endpoint.clientContext.packetIn(data, local, remote)
       return {rtClient}
 
     if hasServerContext and endpoint.serverContext.ownsCid(cid):
       trace "Routing datagram to server context by connection ID", cid
-      endpoint.serverContext.packetIn(data, local, remote)
+      discard endpoint.serverContext.packetIn(data, local, remote)
       return {rtServer}
 
   if hasServerContext and data.isIetfInitial():
     trace "Routing Initial packet with unknown connection ID to server context",
       bytes = data.len, local, remote
-    endpoint.serverContext.packetIn(data, local, remote)
+    discard endpoint.serverContext.packetIn(data, local, remote)
     return {rtServer}
 
   if hasClientContext and hasServerContext and data.isIetfShortHeader():
     trace "Routing short-header packet with unknown connection ID to both contexts",
       bytes = data.len, local, remote
-    endpoint.clientContext.packetIn(data, local, remote)
-    endpoint.serverContext.packetIn(data, local, remote)
+    discard endpoint.clientContext.packetIn(data, local, remote)
+    discard endpoint.serverContext.packetIn(data, local, remote)
     return {rtClient, rtServer}
 
   trace "Dropping packet with unknown connection ID", bytes = data.len, local, remote
