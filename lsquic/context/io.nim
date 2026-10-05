@@ -105,7 +105,7 @@ proc packetIn*(
     local: TransportAddress,
     remote: TransportAddress,
     ecn: cint = 0,
-): bool {.discardable.} =
+): bool =
   ## Returns false when the datagram was not handed to the engine or the engine
   ## reports an error while accepting it.
   if data.len == 0 or not ctx.isRunning():
