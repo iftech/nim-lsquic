@@ -6,6 +6,12 @@ when defined(windows):
   when defined(clang):
     {.passl: "-lpthread".}
 
+when defined(release):
+  when defined(vcc):
+    {.passc: "/DNDEBUG".}
+  else:
+    {.passc: "-DNDEBUG".}
+
 import std/[os, strutils]
 import chronos/osdefs
 {.push warning[UnusedImport]: off.}
