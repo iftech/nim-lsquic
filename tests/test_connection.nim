@@ -125,6 +125,96 @@ proc runLostInitialDialTest(address: TransportAddress) {.async.} =
   incomingConn.close()
   await allFutures(outgoingConn.closedFuture(), incomingConn.closedFuture())
 
+proc runClientAddressMigrationTest(address: TransportAddress) {.async.} =
+  let server = makeServer()
+  let listener = server.listen(address)
+  let serverAddress = listener.localAddress()
+
+  var
+    clientAddress: TransportAddress
+    useAlternatePath = false
+    clientPacketsOnAlternatePath = 0
+    serverPacketsOnAlternatePath = 0
+    proxyError: string
+    primaryProxy: DatagramTransport
+
+  # After the handshake, forward client packets from the alternate proxy. Relay
+  # replies through the primary proxy so only the server observes the rebinding.
+  proc onAlternateReceive(
+      proxy: DatagramTransport, remote: TransportAddress
+  ) {.async: (raises: []).} =
+    try:
+      let msg = proxy.getMessage()
+      if remote != serverAddress:
+        proxyError = "alternate proxy received a packet from an unexpected peer"
+        return
+      serverPacketsOnAlternatePath.inc
+      await primaryProxy.sendTo(clientAddress, msg)
+    except CatchableError as exc:
+      proxyError = exc.msg
+
+  let alternateProxy = newDatagramTransport(onAlternateReceive, local = address)
+
+  proc onPrimaryReceive(
+      proxy: DatagramTransport, remote: TransportAddress
+  ) {.async: (raises: []).} =
+    try:
+      let msg = proxy.getMessage()
+      if remote == serverAddress:
+        await proxy.sendTo(clientAddress, msg)
+      else:
+        clientAddress = remote
+        if useAlternatePath:
+          clientPacketsOnAlternatePath.inc
+          await alternateProxy.sendTo(serverAddress, msg)
+        else:
+          await proxy.sendTo(serverAddress, msg)
+    except CatchableError as exc:
+      proxyError = exc.msg
+
+  primaryProxy = newDatagramTransport(onPrimaryReceive, local = address)
+  let client = makeClient()
+  defer:
+    await allFutures(client.stop(), listener.stop())
+    await allFutures(primaryProxy.closeWait(), alternateProxy.closeWait())
+
+  let accepting = listener.accept()
+  let outgoingConn = await client.dial(primaryProxy.localAddress()).wait(dialTimeout)
+  let incomingConn = await accepting.wait(dialTimeout)
+
+  useAlternatePath = true
+  let request = @[1'u8, 2, 3, 4, 5]
+  let response = @[6'u8, 7, 8, 9, 10]
+
+  let clientBehaviour = proc() {.async.} =
+    let requestStream = await outgoingConn.openStream()
+    await requestStream.write(request)
+    await requestStream.close()
+
+    let responseStream = await outgoingConn.incomingStream()
+    check (await readStreamTillEOF(responseStream)) == response
+    await responseStream.close()
+
+  let serverBehaviour = proc() {.async.} =
+    let requestStream = await incomingConn.incomingStream()
+    check (await readStreamTillEOF(requestStream)) == request
+    await requestStream.close()
+
+    let responseStream = await incomingConn.openStream()
+    await responseStream.write(response)
+    await responseStream.close()
+
+  await allFuturesRaising(clientBehaviour(), serverBehaviour()).wait(streamTimeout)
+
+  check:
+    proxyError.len == 0
+    clientPacketsOnAlternatePath > 0
+    serverPacketsOnAlternatePath > 0
+
+  outgoingConn.close()
+  incomingConn.close()
+  await allFutures(outgoingConn.closedFuture(), incomingConn.closedFuture())
+
 proc runEndpointAcceptTest(address: TransportAddress) {.async.} =
   let client = makeClient()
   let endpoint = makeEndpoint(address, {CanListen})
@@ -379,6 +469,9 @@ suite "connection":
 
   asyncTest "dial completes when the initial packet is dropped":
     await runLostInitialDialTest(AutoAddressIP4)
+
+  asyncTest "connection survives client address migration":
+    await runClientAddressMigrationTest(AutoAddressIP4)
 
   asyncTest "multiple concurrent stream opens":
     await runConcurrentStreamOpenTest(AutoAddressIP4)
