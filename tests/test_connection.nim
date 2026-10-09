@@ -454,6 +454,37 @@ proc runChunkedReadTest(peers: ConnectedPeers, bufSize, payloadSize: int) {.asyn
 
   await allFuturesRaising(sender(), receiver()).wait(streamTimeout)
 
+proc idleConnectionSurvives(address: TransportAddress): Future[bool] {.async.} =
+  let idleTimeout = 3.seconds
+  let client = QuicClient.new(
+    makeTLSConfig(),
+    engineConfig = QuicEngineConfig(
+      idleTimeout: Opt.some(idleTimeout), pingPeriod: Opt.some(1.seconds)
+    ),
+  )
+  let server = QuicServer.new(
+    makeTLSConfig(), engineConfig = QuicEngineConfig(idleTimeout: Opt.some(idleTimeout))
+  )
+  let listener = server.listen(address)
+  defer:
+    await allFutures(client.stop(), listener.stop())
+  let accepting = listener.accept()
+  let outgoingConn = await client.dial(listener.localAddress())
+  let incomingConn = await accepting
+
+  # Wait past the 7 s of NEW_CONNECTION_ID frames, which also keep the connection alive.
+  await sleepAsync(idleTimeout * 4)
+
+  let survived =
+    not outgoingConn.closedFuture().finished() and
+    not incomingConn.closedFuture().finished()
+
+  outgoingConn.close()
+  incomingConn.close()
+  await allFutures(outgoingConn.closedFuture(), incomingConn.closedFuture())
+
+  survived
+
 suite "connection":
   teardown:
     checkTrackers()
@@ -472,6 +503,9 @@ suite "connection":
 
   asyncTest "connection survives client address migration":
     await runClientAddressMigrationTest(AutoAddressIP4)
+
+  asyncTest "connection without streams outlives the idle timeout":
+    check await idleConnectionSurvives(AutoAddressIP4)
 
   asyncTest "multiple concurrent stream opens":
     await runConcurrentStreamOpenTest(AutoAddressIP4)
