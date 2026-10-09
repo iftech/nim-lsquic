@@ -44,6 +44,9 @@ proc runConnectionTest(
     incomingConn.localAddress().port == boundAddress.port
     outgoingConn.localAddress().port == incomingConn.remoteAddress().port
 
+  if boundAddress.isAnyLocal():
+    check not incomingConn.localAddress().isAnyLocal()
+
   let outgoingBehaviour = proc() {.async.} =
     let stream = await outgoingConn.openStream()
 
@@ -270,6 +273,23 @@ proc runEndpointSharedSocketDialTest(address: TransportAddress) {.async.} =
   incomingConn.close()
   await allFutures(outgoingConn.closedFuture(), incomingConn.closedFuture())
 
+proc runEndpointDualStackDialTest() {.async.} =
+  let dialer = makeEndpoint(WildcardIP6)
+  let server = makeEndpoint(AutoAddressIP4, {CanListen})
+  let dialerPort = dialer.localAddress().port
+  defer:
+    await allFutures(dialer.stop(), server.stop())
+
+  let accepting = server.accept()
+  let outgoingConn = await dialer.dial(server.localAddress()).wait(dialTimeout)
+  let incomingConn = await accepting.wait(dialTimeout)
+
+  check incomingConn.remoteAddress().port == dialerPort
+
+  outgoingConn.close()
+  incomingConn.close()
+  await allFutures(outgoingConn.closedFuture(), incomingConn.closedFuture())
+
 proc runEndpointDialOnlyTest(address: TransportAddress) {.async.} =
   let server = makeServer()
   let listener = server.listen(address)
@@ -484,6 +504,9 @@ suite "connection":
 
   asyncTest "endpoint dials from listener socket":
     await runEndpointSharedSocketDialTest(AutoAddressIP4)
+
+  asyncTest "dual-stack endpoint dials IPv4 from listener socket":
+    await runEndpointDualStackDialTest()
 
   asyncTest "dial-only endpoint works without listener":
     await runEndpointDialOnlyTest(AutoAddressIP4)
