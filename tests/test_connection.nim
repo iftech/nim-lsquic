@@ -454,7 +454,29 @@ proc runChunkedReadTest(peers: ConnectedPeers, bufSize, payloadSize: int) {.asyn
 
   await allFuturesRaising(sender(), receiver()).wait(streamTimeout)
 
-proc idleConnectionSurvives(address: TransportAddress): Future[bool] {.async.} =
+proc exchangeOnStream(outgoingConn, incomingConn: Connection): Future[bool] {.async.} =
+  let payload = @[1'u8, 2, 3]
+  let sender = proc() {.async.} =
+    let stream = await outgoingConn.openStream()
+    await stream.write(payload)
+    await stream.close()
+    discard await readStreamTillEOF(stream)
+    await stream.closed.wait()
+
+  let receiver = proc(): Future[seq[byte]] {.async.} =
+    let stream = await incomingConn.incomingStream()
+    let received = await readStreamTillEOF(stream)
+    await stream.close()
+    await stream.closed.wait()
+    received
+
+  let receiving = receiver()
+  await allFuturesRaising(sender(), receiving).wait(streamTimeout)
+  receiving.read() == payload
+
+proc idleConnectionSurvives(
+    address: TransportAddress, closeStreamFirst: bool
+): Future[bool] {.async.} =
   let idleTimeout = 3.seconds
   let client = QuicClient.new(
     makeTLSConfig(),
@@ -472,12 +494,16 @@ proc idleConnectionSurvives(address: TransportAddress): Future[bool] {.async.} =
   let outgoingConn = await client.dial(listener.localAddress())
   let incomingConn = await accepting
 
+  let usedBefore =
+    not closeStreamFirst or await exchangeOnStream(outgoingConn, incomingConn)
+
   # Wait past the 7 s of NEW_CONNECTION_ID frames, which also keep the connection alive.
   await sleepAsync(idleTimeout * 4)
 
   let survived =
-    not outgoingConn.closedFuture().finished() and
-    not incomingConn.closedFuture().finished()
+    usedBefore and not outgoingConn.closedFuture().finished() and
+    not incomingConn.closedFuture().finished() and
+    await exchangeOnStream(outgoingConn, incomingConn)
 
   outgoingConn.close()
   incomingConn.close()
@@ -505,7 +531,10 @@ suite "connection":
     await runClientAddressMigrationTest(AutoAddressIP4)
 
   asyncTest "connection without streams outlives the idle timeout":
-    check await idleConnectionSurvives(AutoAddressIP4)
+    check await idleConnectionSurvives(AutoAddressIP4, closeStreamFirst = false)
+
+  asyncTest "connection outlives the idle timeout after its last stream closes":
+    check await idleConnectionSurvives(AutoAddressIP4, closeStreamFirst = true)
 
   asyncTest "multiple concurrent stream opens":
     await runConcurrentStreamOpenTest(AutoAddressIP4)
