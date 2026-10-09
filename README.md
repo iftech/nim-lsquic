@@ -163,7 +163,9 @@ is split by ownership:
 
 All engine fields are optional. Leaving a field unset preserves nim-lsquic's
 role-specific behavior, which lets nim-libp2p expose one configuration object for
-both dialing and listening. `Duration` values must match LSQUIC's precision:
+both dialing and listening. `noProgressTimeout` is disabled (0) for both roles
+unless set, so the application decides when to close a quiet connection.
+`Duration` values must match LSQUIC's precision:
 whole microseconds for handshakes and whole seconds for the other timers. Invalid
 values are rejected when a client, server, or endpoint is created.
 
