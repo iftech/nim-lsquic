@@ -37,3 +37,9 @@ proc isIPv6Family*(sock: ptr SockAddr): bool {.inline.} =
 
 proc isIPv4Family*(sock: ptr SockAddr): bool {.inline.} =
   sock.sa_family.int == AF_INET.int
+
+func matchSocketFamily*(address, bound: TransportAddress): TransportAddress {.inline.} =
+  if bound.family == AddressFamily.IPv6 and address.family == AddressFamily.IPv4:
+    address.toIPv6()
+  else:
+    address

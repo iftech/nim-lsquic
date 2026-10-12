@@ -40,6 +40,56 @@ type
     running*: bool
     ownedCids: HashSet[CidKey]
 
+    when defined(windows):
+      wsaSendMsg: osdefs.LPFN_WSASENDMSG
+      wsaRecvMsg: osdefs.LPFN_WSARECVMSG
+
+when defined(windows):
+  proc resolveExtension(
+      fd: SocketHandle, guid: var GUID, extension: var pointer
+  ): bool {.raises: [].} =
+    var bytesReturned: DWORD
+    wsaIoctl(
+      fd,
+      osdefs.SIO_GET_EXTENSION_FUNCTION_POINTER,
+      addr guid,
+      DWORD(sizeof(guid)),
+      addr extension,
+      DWORD(sizeof(extension)),
+      addr bytesReturned,
+      nil,
+      nil,
+    ) == 0
+
+  proc initPacketIo*(ctx: QuicContext, fd: SocketHandle): bool {.raises: [].} =
+    var
+      sendExtension, recvExtension: pointer
+      sendGuid = osdefs.WSAID_WSASENDMSG
+      recvGuid = osdefs.WSAID_WSARECVMSG
+    if not resolveExtension(fd, sendGuid, sendExtension) or
+        not resolveExtension(fd, recvGuid, recvExtension):
+      return false
+    ctx.wsaSendMsg = cast[osdefs.LPFN_WSASENDMSG](sendExtension)
+    ctx.wsaRecvMsg = cast[osdefs.LPFN_WSARECVMSG](recvExtension)
+    true
+
+  proc sendMsg*(
+      ctx: QuicContext, fd: SocketHandle, msg: ptr osdefs.WSAMSG, bytesSent: ptr DWORD
+  ): cint {.inline, raises: [].} =
+    if ctx.wsaSendMsg.isNil:
+      return -1
+    ctx.wsaSendMsg(fd, msg, DWORD(0), bytesSent, nil, nil)
+
+  proc recvMsg*(
+      ctx: QuicContext,
+      fd: SocketHandle,
+      msg: ptr osdefs.WSAMSG,
+      bytesReceived: ptr DWORD,
+  ): cint {.inline, raises: [].} =
+    if ctx.wsaRecvMsg.isNil:
+      return -1
+    ctx.wsaRecvMsg(fd, msg, bytesReceived, nil, nil)
+
 func hash*(cid: CidKey): Hash =
   var h = hash(cid.len)
   for i in 0 ..< cid.len.int:

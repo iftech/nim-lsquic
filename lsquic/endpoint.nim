@@ -2,10 +2,12 @@
 # Copyright (c) Status Research & Development GmbH
 
 import chronos, chronicles, results
+import std/nativesockets except SOL_SOCKET, SO_RCVBUF
 when defined(windows):
-  from chronos/osdefs import SOL_SOCKET, SO_RCVBUF
+  from chronos/osdefs import SOL_SOCKET, SO_RCVBUF, getsockname
 else:
   from posix import SOL_SOCKET, SO_RCVBUF
+  from chronos/osdefs import getsockname
 import
   ./[
     errors, connection, tlsconfig, connectionmanager, lsquic_ffi, certificateverifier,
@@ -13,11 +15,6 @@ import
   ]
 import ./context/[server, client, context, io]
 import ./helpers/[logging, transportaddr]
-from chronos/osdefs import Sockaddr_storage, SockAddr, SockLen, SocketHandle
-when defined(windows):
-  from std/winlean import recvfrom
-else:
-  from chronos/osdefs import recvfrom
 
 logScope:
   topics = "lsquic"
@@ -46,7 +43,6 @@ type
 
 const
   CloseWait: Duration = 300.milliseconds
-
   MaxDatagramsPerWakeup = 64
     ## Capped so that a busy socket cannot starve the rest of the event loop.
 
@@ -90,6 +86,10 @@ proc createServerContext(
   var context = ServerContext.new(tlsConfig, engineConfig).valueOr:
     raise newException(QuicError, error)
   context.fd = fd
+  when defined(windows):
+    if not context.initPacketIo(SocketHandle(fd)):
+      context.destroy()
+      raise newException(QuicError, "could not initialize Windows packet I/O")
   context
 
 proc createClientContext(
@@ -98,6 +98,10 @@ proc createClientContext(
   var context = ClientContext.new(tlsConfig, engineConfig).valueOr:
     raise newException(QuicError, error)
   context.fd = fd
+  when defined(windows):
+    if not context.initPacketIo(SocketHandle(fd)):
+      context.destroy()
+      raise newException(QuicError, "could not initialize Windows packet I/O")
   context
 
 proc scidLen(endpoint: QuicEndpoint): cuint {.raises: [].} =
@@ -194,33 +198,8 @@ proc routeDatagram(
   trace "Dropping packet with unknown connection ID", bytes = data.len, local, remote
   {}
 
-proc recvDatagram(
-    fd: SocketHandle,
-    buf: var seq[byte],
-    remoteAddress: var Sockaddr_storage,
-    remoteAddrLen: var SockLen,
-): int {.raises: [].} =
-  when defined(windows):
-    recvfrom(
-      fd,
-      cast[cstring](addr buf[0]),
-      cint(buf.len),
-      cint(0),
-      cast[ptr SockAddr](addr remoteAddress),
-      addr remoteAddrLen,
-    ).int
-  else:
-    recvfrom(
-      fd,
-      addr buf[0],
-      buf.len,
-      cint(0),
-      cast[ptr SockAddr](addr remoteAddress),
-      addr remoteAddrLen,
-    ).int
-
 proc drainDatagrams(
-    endpoint: QuicEndpoint, udp: DatagramTransport, local: TransportAddress
+    endpoint: QuicEndpoint, udp: DatagramTransport
 ): set[RouteTarget] {.raises: [].} =
   ## Chronos hands this callback a single datagram per event-loop wakeup, so
   ## whatever else has already arrived is read here rather than one wakeup, and
@@ -228,23 +207,38 @@ proc drainDatagrams(
   if endpoint.drainBuf.len == 0:
     endpoint.drainBuf = newSeq[byte](DefaultDatagramBufferSize)
 
-  var targets: set[RouteTarget]
+  var
+    targets: set[RouteTarget]
+    boundLocal: TransportAddress
+  try:
+    boundLocal = udp.localAddress()
+  except TransportOsError:
+    return
+
   for _ in 0 ..< MaxDatagramsPerWakeup:
-    var
-      remoteAddress: Sockaddr_storage
-      remoteAddrLen = SockLen(sizeof(Sockaddr_storage))
-    let res = recvDatagram(
-      SocketHandle(udp.fd), endpoint.drainBuf, remoteAddress, remoteAddrLen
-    )
+    var local, remote: TransportAddress
+    let res =
+      when defined(windows):
+        let ctx =
+          if not endpoint.clientContext.isNil:
+            endpoint.clientContext
+          else:
+            endpoint.serverContext
+        if ctx.isNil:
+          -1
+        else:
+          recvPacket(
+            ctx, SocketHandle(udp.fd), endpoint.drainBuf, boundLocal, local, remote
+          )
+      else:
+        recvPacket(SocketHandle(udp.fd), endpoint.drainBuf, boundLocal, local, remote)
     if res < 0:
       # Empty, or an error the transport will report again on the next wakeup.
       break
 
     if res > 0:
       targets.incl endpoint.routeDatagram(
-        endpoint.drainBuf.toOpenArray(0, res - 1),
-        local,
-        toTransportAddress(cast[ptr SockAddr](addr remoteAddress)),
+        endpoint.drainBuf.toOpenArray(0, res - 1), local, remote
       )
 
   targets
@@ -272,7 +266,7 @@ proc receiveFromUdp(
     var
       msg: seq[byte]
       msgLen: int
-    local = udp.localAddress()
+    local = udp.receivedLocalAddress().matchSocketFamily(udp.localAddress())
     readIncoming(udp, msg, msgLen)
     if msgLen > 0:
       targets = endpoint.routeDatagram(msg.toOpenArray(0, msgLen - 1), local, remote)
@@ -280,7 +274,7 @@ proc receiveFromUdp(
     warn "Failed to read UDP datagram", error = shortLog(e.msg)
     return
 
-  targets = targets + endpoint.drainDatagrams(udp, local)
+  targets = targets + endpoint.drainDatagrams(udp)
 
   if rtClient in targets:
     endpoint.clientContext.processWhenReady()
@@ -298,9 +292,11 @@ proc createUdp(
   let udp =
     case address.family
     of AddressFamily.IPv4:
-      newDatagramTransport(onReceive, local = address)
+      newDatagramTransport(onReceive, local = address, flags = {ServerFlags.PacketInfo})
     of AddressFamily.IPv6:
-      newDatagramTransport6(onReceive, local = address)
+      newDatagramTransport6(
+        onReceive, local = address, flags = {ServerFlags.PacketInfo}
+      )
     else:
       raise newException(QuicError, "only IPv4/IPv6 address is supported")
 
@@ -380,6 +376,46 @@ proc ensureClientContext(
 
   endpoint.clientContext
 
+proc selectSourceAddress(remote: TransportAddress): TransportAddress {.raises: [].} =
+  let domain =
+    case remote.family
+    of AddressFamily.IPv4:
+      AF_INET
+    of AddressFamily.IPv6:
+      AF_INET6
+    else:
+      return
+  let fd = createNativeSocket(domain, SOCK_DGRAM, IPPROTO_UDP)
+  if fd.int == osInvalidSocket.int:
+    return
+  defer:
+    nativesockets.close(fd)
+
+  var
+    remoteStorage, localStorage: Sockaddr_storage
+    remoteLen, localLen: SockLen
+  remote.toSAddr(remoteStorage, remoteLen)
+  if connect(fd, cast[ptr SockAddr](addr remoteStorage), remoteLen) != 0:
+    return
+  localLen = SockLen(sizeof(localStorage))
+  if getsockname(fd, cast[ptr SockAddr](addr localStorage), addr localLen) == 0:
+    fromSAddr(addr localStorage, localLen, result)
+
+proc dialLocalAddress(
+    endpoint: QuicEndpoint, remote: TransportAddress
+): TransportAddress {.raises: [TransportOsError].} =
+  let bound = endpoint.udp.localAddress()
+  if not bound.isAnyLocal():
+    return bound
+
+  var source = selectSourceAddress(remote)
+  if source.family == AddressFamily.None:
+    return bound
+
+  source = source.matchSocketFamily(bound)
+  source.port = bound.port
+  source
+
 proc accept*(
     endpoint: QuicEndpoint
 ): Future[Connection] {.async: (raises: [CancelledError, TransportError]).} =
@@ -418,7 +454,7 @@ proc dial(
 .} =
   let ctx = endpoint.ensureClientContext()
   let connection = newOutgoingConnection(
-    ctx, endpoint.udp.localAddress(), address, serverName, certVerifier
+    ctx, endpoint.dialLocalAddress(address), address, serverName, certVerifier
   )
   endpoint.connman.addConnection(connection)
   var connected = false

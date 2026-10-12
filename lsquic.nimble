@@ -9,7 +9,7 @@ installFiles = @["lsquic.nim"]
 requires "nim >= 2.0.0"
 requires "zlib"
 requires "stew >= 0.4.0"
-requires "chronos >= 4.0.4"
+requires "https://github.com/status-im/nim-chronos#012cd2c92e9e62b11976ad15b5fd1404e279cf9a"
 requires "unittest2"
 requires "chronicles >= 0.11.0"
 requires "https://github.com/vacp2p/nim-boringssl >= 0.0.11"
