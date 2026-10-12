@@ -1,5 +1,5 @@
 packageName = "lsquic"
-version = "0.11.0"
+version = "0.11.1"
 author = "Status Research & Development GmbH"
 description = "Nim wrapper around the lsquic library"
 license = "MIT"
