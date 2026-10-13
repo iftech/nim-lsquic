@@ -186,6 +186,29 @@ For more complete usage patterns, see:
 - [`tests/test_verifier.nim`](tests/test_verifier.nim)
 - [`tests/test_stress.nim`](tests/test_stress.nim)
 
+### Native QUIC diagnostics
+
+Set `NIM_LSQUIC_LOG` before starting the process to enable LSQUIC's native
+logger, for example:
+
+```sh
+NIM_LSQUIC_LOG='conn=debug,mini-conn=debug,handshake=debug,engine=info' ./nimbus_beacon_node --log-level=DEBUG
+```
+
+The binary must be built with `-d:chronicles_log_level=DEBUG` (or `TRACE`),
+because Chronicles otherwise omits DEBUG logs from release builds. Native
+messages are forwarded at DEBUG under topic `lsquic_native`; their original
+severity, module, and QUIC connection ID remain in the `message` field.
+Connection creation, client handshake results, and connection closure are
+logged at DEBUG under `lsquic`, with CID and local/remote addresses. Closure
+records also include status, stateless-reset detection, and the native reason.
+
+The environment value is LSQUIC's comma-separated `module=level` syntax.
+Invalid values fail initialization. Leave it unset to keep native logging
+disabled. Configuration is process-wide; restart the process to change it.
+Native connection debug logs can be voluminous; enable them on diagnostic nodes.
+This branch is based on `23983c4`, without the later keepalive changes.
+
 ## Development
 
 ### Run tests

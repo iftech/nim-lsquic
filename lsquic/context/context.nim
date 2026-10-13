@@ -11,7 +11,7 @@ import
     lsquic_ffi, errors, tlsconfig, timeout, certificates, certificateverifier, stream,
     tracking,
   ]
-import ../helpers/logging
+import ../helpers/[logging, transportaddr]
 
 logScope:
   topics = "lsquic"
@@ -110,6 +110,20 @@ proc trackConnectionCid*(ctx: QuicContext, conn: ptr lsquic_conn_t) {.raises: []
 
 proc ownsCid*(ctx: QuicContext, cid: CidKey): bool {.raises: [].} =
   not ctx.isNil and cid in ctx.ownedCids
+
+proc connectionLogInfo*(
+    conn: ptr lsquic_conn_t
+): tuple[cid, localAddress, remoteAddress: string] {.raises: [].} =
+  let cid = lsquic_conn_id(conn)
+  if not cid.isNil:
+    for i in 0 ..< cid.len.int:
+      result.cid.add(toHex(cid.buf[i], 2))
+  var local, remote: ptr SockAddr
+  if lsquic_conn_get_sockaddr(conn, addr local, addr remote) == 0:
+    if not local.isNil:
+      result.localAddress = $local.toTransportAddress()
+    if not remote.isNil:
+      result.remoteAddress = $remote.toTransportAddress()
 
 proc connectionStatus*(
     conn: ptr lsquic_conn_t
