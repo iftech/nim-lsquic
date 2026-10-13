@@ -219,6 +219,14 @@ proc recvDatagram(
       addr remoteAddrLen,
     ).int
 
+proc receivedAddress(sock: ptr SockAddr): TransportAddress {.raises: [].} =
+  let remote = toTransportAddress(sock)
+  # Match Chronos on dual-stack sockets so draining cannot look like migration.
+  if remote.isV4Mapped():
+    remote.toIPv4()
+  else:
+    remote
+
 proc drainDatagrams(
     endpoint: QuicEndpoint, udp: DatagramTransport, local: TransportAddress
 ): set[RouteTarget] {.raises: [].} =
@@ -244,7 +252,7 @@ proc drainDatagrams(
       targets.incl endpoint.routeDatagram(
         endpoint.drainBuf.toOpenArray(0, res - 1),
         local,
-        toTransportAddress(cast[ptr SockAddr](addr remoteAddress)),
+        receivedAddress(cast[ptr SockAddr](addr remoteAddress)),
       )
 
   targets
@@ -526,4 +534,5 @@ when defined(lsquic_testing):
     endpoint.connman.len
 
   export
-    scidLen, packetDcid, isIetfInitial, isIetfShortHeader, routeDatagram, RouteTarget
+    receivedAddress, scidLen, packetDcid, isIetfInitial, isIetfShortHeader,
+    routeDatagram, RouteTarget
