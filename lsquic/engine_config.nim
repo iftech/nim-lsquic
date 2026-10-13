@@ -102,6 +102,8 @@ proc initSettings*(
   settings.es_init_max_streams_bidi = 100
   settings.es_honor_prst = 1
   settings.es_ping_period = 15 # both sides ping, as in go-libp2p
+  # lsquic's 60 s server default closes connections that carry only PINGs.
+  settings.es_noprogress_timeout = 0
   settings.es_max_cfcw =
     if server:
       1536 * 1024

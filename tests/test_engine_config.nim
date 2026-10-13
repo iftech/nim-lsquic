@@ -57,6 +57,17 @@ suite "engine config":
       settings.es_allow_migration == 0
       settings.es_dplpmtud == 1
 
+  test "no-progress timeout is disabled unless set":
+    for server in [false, true]:
+      var unset, explicit: struct_lsquic_engine_settings
+      unset.initSettings(server)
+      explicit.initSettings(server)
+      DefaultQuicEngineConfig.apply(unset, server)
+      QuicEngineConfig(noProgressTimeout: Opt.some(30.seconds)).apply(explicit, server)
+      check:
+        unset.es_noprogress_timeout == 0
+        explicit.es_noprogress_timeout == 30
+
   test "unsupported duration precision is rejected":
     var settings: struct_lsquic_engine_settings
     lsquic_engine_init_settings(addr settings, 0)
