@@ -6,6 +6,7 @@
 import unittest2
 import chronos, chronos/osdefs
 import ../lsquic/context/io
+import ../lsquic/endpoint
 import ./helpers/[address, trackers]
 
 proc prepared(local, dest: string): TransportAddress =
@@ -44,3 +45,20 @@ suite "destination address preparation":
   test "IPv4 local leaves an IPv6 destination alone":
     check prepared("192.168.1.10:1000", "[2001:db8::2]:4433") ==
       initTAddress("[2001:db8::2]:4433")
+
+proc received(address: TransportAddress): TransportAddress =
+  var storage = toSockaddrStorage(address)
+  receivedAddress(cast[ptr SockAddr](addr storage))
+
+suite "received peer addresses":
+  test "mapped IPv4 matches the Chronos callback representation":
+    let peer = initTAddress("192.0.2.1:4433")
+    check received(peer.toIPv6()) == peer
+
+  test "native IPv4 preserves address and port":
+    let peer = initTAddress("192.0.2.1:4433")
+    check received(peer) == peer
+
+  test "native IPv6 preserves address and port":
+    let peer = initTAddress("[2001:db8::1]:4433")
+    check received(peer) == peer
