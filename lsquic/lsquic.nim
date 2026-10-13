@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 # Copyright (c) Status Research & Development GmbH 
 
-import std/os
 import chronicles
 import lsquic_ffi
 
@@ -21,19 +20,14 @@ var
   initialized: bool
   nativeLogger = struct_lsquic_logger_if(log_buf: nativeLog)
 
-proc configureNativeLogging() =
-  let options = getEnv("NIM_LSQUIC_LOG")
-  if options.len == 0:
-    return
-  if lsquic_logger_lopt(options.cstring) != 0:
-    raise newException(ValueError, "invalid NIM_LSQUIC_LOG: " & options)
-  lsquic_logger_init(addr nativeLogger, nil, LLTS_NONE)
-  info "LSQUIC native logging enabled", topics = "lsquic", modules = options
-
 proc initializeLsquic*(client: bool = true, server: bool = true) =
   if initialized:
     return
-  configureNativeLogging()
+  const modules = "conn=debug,mini-conn=debug,handshake=debug,engine=info"
+  let logConfigResult = lsquic_logger_lopt(modules.cstring)
+  doAssert logConfigResult == 0
+  lsquic_logger_init(addr nativeLogger, nil, LLTS_NONE)
+  info "LSQUIC native logging enabled", topics = "lsquic", modules = modules
   var flags = 0.cint
   if client:
     flags = flags or LSQUIC_GLOBAL_CLIENT
