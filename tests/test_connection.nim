@@ -454,6 +454,63 @@ proc runChunkedReadTest(peers: ConnectedPeers, bufSize, payloadSize: int) {.asyn
 
   await allFuturesRaising(sender(), receiver()).wait(streamTimeout)
 
+proc exchangeOnStream(outgoingConn, incomingConn: Connection): Future[bool] {.async.} =
+  let payload = @[1'u8, 2, 3]
+  let sender = proc() {.async.} =
+    let stream = await outgoingConn.openStream()
+    await stream.write(payload)
+    await stream.close()
+    discard await readStreamTillEOF(stream)
+    await stream.closed.wait()
+
+  let receiver = proc(): Future[seq[byte]] {.async.} =
+    let stream = await incomingConn.incomingStream()
+    let received = await readStreamTillEOF(stream)
+    await stream.close()
+    await stream.closed.wait()
+    received
+
+  let receiving = receiver()
+  await allFuturesRaising(sender(), receiving).wait(streamTimeout)
+  receiving.read() == payload
+
+proc idleConnectionSurvives(
+    address: TransportAddress, closeStreamFirst: bool
+): Future[bool] {.async.} =
+  let idleTimeout = 3.seconds
+  let client = QuicClient.new(
+    makeTLSConfig(),
+    engineConfig = QuicEngineConfig(
+      idleTimeout: Opt.some(idleTimeout), pingPeriod: Opt.some(1.seconds)
+    ),
+  )
+  let server = QuicServer.new(
+    makeTLSConfig(), engineConfig = QuicEngineConfig(idleTimeout: Opt.some(idleTimeout))
+  )
+  let listener = server.listen(address)
+  defer:
+    await allFutures(client.stop(), listener.stop())
+  let accepting = listener.accept()
+  let outgoingConn = await client.dial(listener.localAddress())
+  let incomingConn = await accepting
+
+  let usedBefore =
+    not closeStreamFirst or await exchangeOnStream(outgoingConn, incomingConn)
+
+  # Wait past the 7 s of NEW_CONNECTION_ID frames, which also keep the connection alive.
+  await sleepAsync(idleTimeout * 4)
+
+  let survived =
+    usedBefore and not outgoingConn.closedFuture().finished() and
+    not incomingConn.closedFuture().finished() and
+    await exchangeOnStream(outgoingConn, incomingConn)
+
+  outgoingConn.close()
+  incomingConn.close()
+  await allFutures(outgoingConn.closedFuture(), incomingConn.closedFuture())
+
+  survived
+
 suite "connection":
   teardown:
     checkTrackers()
@@ -472,6 +529,12 @@ suite "connection":
 
   asyncTest "connection survives client address migration":
     await runClientAddressMigrationTest(AutoAddressIP4)
+
+  asyncTest "connection without streams outlives the idle timeout":
+    check await idleConnectionSurvives(AutoAddressIP4, closeStreamFirst = false)
+
+  asyncTest "connection outlives the idle timeout after its last stream closes":
+    check await idleConnectionSurvives(AutoAddressIP4, closeStreamFirst = true)
 
   asyncTest "multiple concurrent stream opens":
     await runConcurrentStreamOpenTest(AutoAddressIP4)
