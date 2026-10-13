@@ -20,7 +20,11 @@ logScope:
 proc onNewConn(
     stream_if_ctx: pointer, conn: ptr lsquic_conn_t
 ): ptr lsquic_conn_ctx_t {.cdecl.} =
-  trace "Server connection established"
+  let details = connectionLogInfo(conn)
+  debug "Server connection established",
+    cid = details.cid,
+    localAddress = details.localAddress,
+    remoteAddress = details.remoteAddress
   var local: ptr SockAddr
   var remote: ptr SockAddr
   discard lsquic_conn_get_sockaddr(conn, addr local, addr remote)
@@ -48,7 +52,11 @@ proc onNewConn(
 
 proc onConnClosed(conn: ptr lsquic_conn_t) {.cdecl.} =
   let (connStatus, msg) = connectionStatus(conn)
-  trace "Server connection closed",
+  let details = connectionLogInfo(conn)
+  debug "Server connection closed",
+    cid = details.cid,
+    localAddress = details.localAddress,
+    remoteAddress = details.remoteAddress,
     status = connectionStatusLabel(connStatus),
     statelessReset = connStatus == LSCONN_ST_RESET,
     reason = msg
