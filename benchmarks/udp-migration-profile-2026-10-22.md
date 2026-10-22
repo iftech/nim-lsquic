@@ -5,6 +5,9 @@ the final controlled comparison still shows a bulk-throughput regression:
 3,822 → 3,733 Mbit/s (-2.3%), with CPU time per GB rising 2.4%. The median
 paired throughput change is -1.7%. Performance parity is not established.
 
+The [send-conversion follow-up](udp-migration-send-2026-10-22.md) measures that
+remaining candidate; its experimental helper change was not retained.
+
 ## Profiling and experiments
 
 The kernel's `perf_event_paranoid=4` setting prevented hardware-counter and
