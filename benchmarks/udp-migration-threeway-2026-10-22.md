@@ -123,3 +123,5 @@ This experiment measures a single-process Linux loopback workload. It does not
 establish effects on physical networks, concurrent connections, latency under
 bulk load, packet loss or Windows/macOS performance. CPU affinity and alternating
 order reduce interference and order bias but do not create an isolated machine.
+
+Follow-up: the [legacy API control and bulk profile](udp-migration-legacy-control-2026-10-22.md) keeps old nim-lsquic on proposed Chronos to isolate adoption of the new UDP path.
