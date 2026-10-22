@@ -3,7 +3,7 @@
 
 {.used.}
 
-import chronos, chronos/osdefs, nativesockets, unittest2
+import chronos, chronos/osdefs, chronos/unittest2/asynctests
 import lsquic/[lsquic_ffi, context/context, context/io]
 import ./helpers/[address, trackers]
 
@@ -20,12 +20,22 @@ proc makeOutSpec(
     dest_sa: cast[ptr SockAddr](dest),
   )
 
+proc ignorePacket(
+    t: DatagramTransport,
+    data: openArray[byte],
+    remote: TransportAddress,
+    error: OSErrorCode,
+) {.gcsafe.} =
+  discard
+
 suite "packets out":
   teardown:
     checkTrackers()
 
-  test "a send with no packets sent out reports -1":
-    let ctx = QuicContext(fd: -1)
+  asyncTest "a send with no packets sent out reports -1":
+    let udp = newDatagramTransportSync(ignorePacket, local = AutoAddressIP4)
+    await udp.closeWait()
+    let ctx = QuicContext(udp: udp)
     var
       payload = @[1'u8, 2, 3]
       localStorage = toSockaddrStorage(initTAddress("127.0.0.1:1000"))
@@ -40,22 +50,24 @@ suite "packets out":
 
     check res == -1
 
-  test "a send with some packets sent out reports the count":
+  asyncTest "a send with some packets sent out reports the count":
     # Returning -1 would make the engine resend a datagram that already went out.
-    let fd = createNativeSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+    let udp = newDatagramTransportSync(ignorePacket, local = AutoAddressIP4)
     defer:
-      nativesockets.close(fd)
+      await udp.closeWait()
 
-    let ctx = QuicContext(fd: cint(fd))
+    let ctx = QuicContext(udp: udp)
     var
       payload = @[1'u8, 2, 3]
       localStorage = toSockaddrStorage(initTAddress("127.0.0.1:1000"))
       ipv4DestStorage = toSockaddrStorage(initTAddress("127.0.0.1:4433"))
-      ipv6DestStorage = toSockaddrStorage(initTAddress("[::1]:4433"))
+      oversized = newSeq[byte](65536)
       iov = struct_iovec(iov_base: addr payload[0], iov_len: payload.len.csize_t)
+      oversizedIov =
+        struct_iovec(iov_base: addr oversized[0], iov_len: oversized.len.csize_t)
       specs = [
         makeOutSpec(addr iov, addr localStorage, addr ipv4DestStorage),
-        makeOutSpec(addr iov, addr localStorage, addr ipv6DestStorage),
+        makeOutSpec(addr oversizedIov, addr localStorage, addr ipv4DestStorage),
       ]
 
     let res = sendPacketsOut(cast[pointer](ctx), addr specs[0], 2)
@@ -66,15 +78,15 @@ suite "packets out":
 
     check res == 1
 
-  test "a batch larger than one sendmmsg call sends every packet":
-    # SendmmsgBatchSize is 64, so +1 specs take two sendmmsg calls.
+  asyncTest "a batch larger than the adapter buffer sends every packet":
+    # Exercise the adapter across its fixed-size descriptor buffer.
     const SpecCount = 64 + 1 # const is not exported
 
-    let fd = createNativeSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+    let udp = newDatagramTransportSync(ignorePacket, local = AutoAddressIP4)
     defer:
-      nativesockets.close(fd)
+      await udp.closeWait()
 
-    let ctx = QuicContext(fd: cint(fd))
+    let ctx = QuicContext(udp: udp)
     var
       payload = @[1'u8, 2, 3]
       localStorage = toSockaddrStorage(initTAddress("127.0.0.1:1000"))
