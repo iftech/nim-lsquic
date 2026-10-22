@@ -594,3 +594,21 @@ client-side CPU and RSS come from `getrusage(RUSAGE_SELF)`.
 
 4. **Results** are collected as JSON per run and aggregated into a summary table
    by `run.sh`.
+
+## UDP migration comparison
+
+`bench_udp_migration.nim` compares complete QUIC workloads when built against the
+original manual UDP drain loop and the Chronos-based migration. It emits JSON
+for a 1 GB transfer and 20,000 sequential round trips at each of 64 and 1,200
+application bytes. CPU time includes both endpoints in the same process;
+connection setup and cleanup are outside the measured intervals.
+
+Build the identical source in both checkouts with the same compiler, dependencies,
+and `-d:release --mm:orc --threads:on -d:chronicles_log_level=ERROR`. Select the same
+Chronos checkout explicitly with `--path`; the baseline still uses its original
+async-callback/manual-drain receive path. Run the binaries sequentially in
+alternating order, with the same CPU affinity, and discard a warmup pair.
+
+See [the measured comparison](udp-migration-2026-10-22.md) for revisions,
+methodology, raw results, and limitations. These loopback results do not measure
+separate-host behavior, congestion, or latency during concurrent bulk traffic.
