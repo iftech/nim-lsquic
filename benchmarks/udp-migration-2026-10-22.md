@@ -29,7 +29,7 @@ against the Chronos migration, not against ordinary per-packet Chronos delivery.
 - A preliminary 100 MB / 2,000-RTT run showed substantial variation; the longer
   workload above was selected before collecting these final results.
 
-## Results
+## Initial results
 
 Values below are medians of the six runs. RTT columns are medians of per-run
 percentiles, not percentiles pooled across all runs. Change is the ratio of the
@@ -65,6 +65,43 @@ measured causes.
 This is a single-process Linux loopback experiment. It does not measure physical
 network behavior, concurrent connections, latency under bulk load, packet loss,
 or Windows/macOS performance.
+
+## Idle-machine repeat
+
+The same binaries and runner were repeated after the user stopped using the
+machine. Workload, CPU 0 affinity, warmup and six alternating measured pairs were
+unchanged. CPU frequency remained unlocked and the CPU was not reserved; this
+reduces foreground interference without establishing a fully isolated environment.
+The original results above are preserved.
+
+| Metric | Original | Migrated | Change |
+|---|---:|---:|---:|
+| 1 GB throughput (Mbit/s) | 3783.901 | 3593.138 | -5.0% |
+| 1 GB CPU time (s) | 2.114 | 2.226 | +5.3% |
+| 64-byte RTT p50 (µs) | 13.547 | 13.739 | +1.4% |
+| 64-byte RTT p95 (µs) | 14.784 | 15.166 | +2.6% |
+| 64-byte RTT p99 (µs) | 18.341 | 18.871 | +2.9% |
+| 64-byte CPU time / 20,000 RTTs (ms) | 276.714 | 279.066 | +0.8% |
+| 1,200-byte RTT p50 (µs) | 14.226 | 14.771 | +3.8% |
+| 1,200-byte RTT p95 (µs) | 15.682 | 16.900 | +7.8% |
+| 1,200-byte RTT p99 (µs) | 20.048 | 22.500 | +12.2% |
+| 1,200-byte CPU time / 20,000 RTTs (ms) | 291.938 | 301.704 | +3.3% |
+
+All six pairs showed lower migrated bulk throughput: -6.3%, -4.5%, -4.3%,
+-4.7%, -3.9%, -6.8%, with a median paired change of -4.6%. Original throughput
+ranged from 3,733 to 3,848 Mbit/s; migrated throughput ranged from 3,584 to
+3,614 Mbit/s. These ranges are substantially narrower than in the initial run.
+
+The repeat supports a reproducible bulk regression in this loopback workload:
+median throughput falls 5.0% and CPU time rises 5.3%. Foreground activity may
+have contributed to the earlier variability, but does not explain the remaining
+gap. RTT medians and tails also increase in this repeat. This does not identify
+the cause or establish the effect on other workloads; profiling is the next step.
+Keep the migration in draft pending investigation.
+
+[Idle-repeat raw CSV](udp-migration-2026-10-22-idle.csv) includes all 42 workload
+records, including the discarded warmup pair. Summary calculations use only the
+six measured pairs and the same median definitions as the initial run.
 
 ## Reproduction and raw data
 
