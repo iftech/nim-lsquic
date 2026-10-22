@@ -2,22 +2,13 @@
 # Copyright (c) Status Research & Development GmbH
 
 import chronos, chronicles, results
-when defined(windows):
-  from chronos/osdefs import SOL_SOCKET, SO_RCVBUF
-else:
-  from posix import SOL_SOCKET, SO_RCVBUF
 import
   ./[
     errors, connection, tlsconfig, connectionmanager, lsquic_ffi, certificateverifier,
     socketconfig, engine_config,
   ]
 import ./context/[server, client, context, io]
-import ./helpers/[logging, transportaddr]
-from chronos/osdefs import Sockaddr_storage, SockAddr, SockLen, SocketHandle
-when defined(windows):
-  from std/winlean import recvfrom
-else:
-  from chronos/osdefs import recvfrom
+import ./helpers/logging
 
 logScope:
   topics = "lsquic"
@@ -41,7 +32,7 @@ type
     connman: ConnectionManager
     udp: DatagramTransport
     stopped: bool
-    drainBuf: seq[byte]
+    receiveTargets: set[RouteTarget]
     engineConfig: QuicEngineConfig
 
 const
@@ -53,7 +44,7 @@ const
 proc socketReceiveBufferBytes(
     udp: DatagramTransport
 ): int {.raises: [TransportOsError].} =
-  let value = getSockOpt2(udp.fd, int(SOL_SOCKET), int(SO_RCVBUF)).valueOr:
+  let value = udp.getReceiveBufferSize().valueOr:
     raiseTransportOsError(error)
     return
   value.int
@@ -66,7 +57,7 @@ proc configureReceiveBuffer(
     # Zero keeps the OS default socket buffer.
     return
 
-  let setRes = setSockOpt2(udp.fd, int(SOL_SOCKET), int(SO_RCVBUF), requested)
+  let setRes = udp.setReceiveBufferSize(requested)
   if setRes.isErr():
     raiseTransportOsError(setRes.error())
 
@@ -85,19 +76,19 @@ proc configureReceiveBuffer(
       requestedBytes = requested, effectiveBytes = effective
 
 proc createServerContext(
-    tlsConfig: TLSConfig, fd: cint, engineConfig: QuicEngineConfig
+    tlsConfig: TLSConfig, udp: DatagramTransport, engineConfig: QuicEngineConfig
 ): ServerContext {.raises: [QuicError].} =
   var context = ServerContext.new(tlsConfig, engineConfig).valueOr:
     raise newException(QuicError, error)
-  context.fd = fd
+  context.udp = udp
   context
 
 proc createClientContext(
-    tlsConfig: TLSConfig, fd: cint, engineConfig: QuicEngineConfig
+    tlsConfig: TLSConfig, udp: DatagramTransport, engineConfig: QuicEngineConfig
 ): ClientContext {.raises: [QuicError].} =
   var context = ClientContext.new(tlsConfig, engineConfig).valueOr:
     raise newException(QuicError, error)
-  context.fd = fd
+  context.udp = udp
   context
 
 proc scidLen(endpoint: QuicEndpoint): cuint {.raises: [].} =
@@ -194,125 +185,41 @@ proc routeDatagram(
   trace "Dropping packet with unknown connection ID", bytes = data.len, local, remote
   {}
 
-proc recvDatagram(
-    fd: SocketHandle,
-    buf: var seq[byte],
-    remoteAddress: var Sockaddr_storage,
-    remoteAddrLen: var SockLen,
-): int {.raises: [].} =
-  when defined(windows):
-    recvfrom(
-      fd,
-      cast[cstring](addr buf[0]),
-      cint(buf.len),
-      cint(0),
-      cast[ptr SockAddr](addr remoteAddress),
-      addr remoteAddrLen,
-    ).int
-  else:
-    recvfrom(
-      fd,
-      addr buf[0],
-      buf.len,
-      cint(0),
-      cast[ptr SockAddr](addr remoteAddress),
-      addr remoteAddrLen,
-    ).int
-
-proc receivedAddress(sock: ptr SockAddr): TransportAddress {.raises: [].} =
-  let remote = toTransportAddress(sock)
-  # Match Chronos on dual-stack sockets so draining cannot look like migration.
-  if remote.isV4Mapped():
-    remote.toIPv4()
-  else:
-    remote
-
-proc drainDatagrams(
-    endpoint: QuicEndpoint, udp: DatagramTransport, local: TransportAddress
-): set[RouteTarget] {.raises: [].} =
-  ## Chronos hands this callback a single datagram per event-loop wakeup, so
-  ## whatever else has already arrived is read here rather than one wakeup, and
-  ## one engine tick, at a time.
-  if endpoint.drainBuf.len == 0:
-    endpoint.drainBuf = newSeq[byte](DefaultDatagramBufferSize)
-
-  var targets: set[RouteTarget]
-  for _ in 0 ..< MaxDatagramsPerWakeup:
-    var
-      remoteAddress: Sockaddr_storage
-      remoteAddrLen = SockLen(sizeof(Sockaddr_storage))
-    let res = recvDatagram(
-      SocketHandle(udp.fd), endpoint.drainBuf, remoteAddress, remoteAddrLen
-    )
-    if res < 0:
-      # Empty, or an error the transport will report again on the next wakeup.
-      break
-
-    if res > 0:
-      targets.incl endpoint.routeDatagram(
-        endpoint.drainBuf.toOpenArray(0, res - 1),
-        local,
-        receivedAddress(cast[ptr SockAddr](addr remoteAddress)),
-      )
-
-  targets
-
-proc readIncoming(
-    udp: DatagramTransport, msg: var seq[byte], msgLen: var int
-) {.raises: [TransportError].} =
-  ## Avoid `peekMessage` under ARC/ORC: without `shallowCopy`, Chronos copies the
-  ## full receive buffer instead of only the datagram. `getMessage` copies only the
-  ## received bytes.
-  when declared(shallowCopy):
-    udp.peekMessage(msg, msgLen)
-  else:
-    msg = udp.getMessage()
-    msgLen = msg.len
-
-proc receiveFromUdp(
-    endpoint: QuicEndpoint, udp: DatagramTransport, remote: TransportAddress
-) {.raises: [].} =
-  var
-    targets: set[RouteTarget]
-    local: TransportAddress
-
-  try:
-    var
-      msg: seq[byte]
-      msgLen: int
-    local = udp.localAddress()
-    readIncoming(udp, msg, msgLen)
-    if msgLen > 0:
-      targets = endpoint.routeDatagram(msg.toOpenArray(0, msgLen - 1), local, remote)
-  except TransportError as e:
-    warn "Failed to read UDP datagram", error = shortLog(e.msg)
-    return
-
-  targets = targets + endpoint.drainDatagrams(udp, local)
-
-  if rtClient in targets:
-    endpoint.clientContext.processWhenReady()
-  if rtServer in targets:
-    endpoint.serverContext.processWhenReady()
-
 proc createUdp(
     endpoint: QuicEndpoint, address: TransportAddress, socketConfig: QuicSocketConfig
 ): DatagramTransport {.raises: [QuicError, TransportOsError].} =
   proc onReceive(
-      udp: DatagramTransport, remote: TransportAddress
-  ) {.async: (raises: []).} =
-    endpoint.receiveFromUdp(udp, remote)
+      udp: DatagramTransport,
+      data: openArray[byte],
+      remote: TransportAddress,
+      error: OSErrorCode,
+  ) {.gcsafe, raises: [].} =
+    if error != OSErrorCode(0):
+      warn "Failed to read UDP datagram", error = osErrorLabel(cint(error))
+      return
+    let local = udp.localAddress2().valueOr:
+      warn "Failed to read UDP local address", error = osErrorLabel(cint(error))
+      return
+    endpoint.receiveTargets.incl endpoint.routeDatagram(data, local, remote)
 
-  let udp =
-    case address.family
-    of AddressFamily.IPv4:
-      newDatagramTransport(onReceive, local = address)
-    of AddressFamily.IPv6:
-      newDatagramTransport6(onReceive, local = address)
-    else:
-      raise newException(QuicError, "only IPv4/IPv6 address is supported")
+  proc onDrain(udp: DatagramTransport) {.gcsafe, raises: [].} =
+    let targets = endpoint.receiveTargets
+    endpoint.receiveTargets = {}
+    if rtClient in targets:
+      endpoint.clientContext.processWhenReady()
+    if rtServer in targets:
+      endpoint.serverContext.processWhenReady()
 
-  udp.configureReceiveBuffer(socketConfig)
+  if address.family notin {AddressFamily.IPv4, AddressFamily.IPv6}:
+    raise newException(QuicError, "only IPv4/IPv6 address is supported")
+  let udp = newDatagramTransportSync(
+    onReceive, local = address, onDrain = onDrain, maxDatagrams = MaxDatagramsPerWakeup
+  )
+  try:
+    udp.configureReceiveBuffer(socketConfig)
+  except TransportOsError as exc:
+    udp.close()
+    raise exc
   udp
 
 proc new*(
@@ -352,8 +259,7 @@ proc new*(
         endpoint.udp.close()
 
   if CanListen in capabilities:
-    endpoint.serverContext =
-      createServerContext(tlsConfig, endpoint.udp.fd.cint, engineConfig)
+    endpoint.serverContext = createServerContext(tlsConfig, endpoint.udp, engineConfig)
 
   initialized = true
   endpoint
@@ -382,9 +288,8 @@ proc ensureClientContext(
     raise newException(QuicError, "endpoint is not dial-capable")
 
   if endpoint.clientContext.isNil:
-    endpoint.clientContext = createClientContext(
-      endpoint.tlsConfig, endpoint.udp.fd.cint, endpoint.engineConfig
-    )
+    endpoint.clientContext =
+      createClientContext(endpoint.tlsConfig, endpoint.udp, endpoint.engineConfig)
 
   endpoint.clientContext
 
@@ -534,5 +439,4 @@ when defined(lsquic_testing):
     endpoint.connman.len
 
   export
-    receivedAddress, scidLen, packetDcid, isIetfInitial, isIetfShortHeader,
-    routeDatagram, RouteTarget
+    scidLen, packetDcid, isIetfInitial, isIetfShortHeader, routeDatagram, RouteTarget
