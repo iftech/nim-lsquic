@@ -192,3 +192,5 @@ justify changing receive budgets or exposing the experimental duplicate routine
 as-is. The production API still needs a clear borrowed-address lifetime and
 length contract, shared normalization/error/queue handling, dedicated boundary
 tests and native Windows/macOS validation. Both PRs remain drafts.
+
+Follow-up: the [integrated native-address API and benchmark](udp-migration-native-integrated-2026-10-22.md) replace the diagnostic duplicate with shared send handling and measure the actual PR implementation.
