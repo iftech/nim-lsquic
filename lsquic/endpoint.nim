@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 # Copyright (c) Status Research & Development GmbH
 
+from std/os import OSErrorCode
 import chronos, chronicles, results
 import
   ./[
