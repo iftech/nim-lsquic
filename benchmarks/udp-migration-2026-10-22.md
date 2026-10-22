@@ -7,6 +7,10 @@ against the Chronos migration, not against ordinary per-packet Chronos delivery.
 The [profiling follow-up](udp-migration-profile-2026-10-22.md) records subsequent
 experiments and the remaining gap after two targeted receive-path changes.
 
+The [complete-stack comparison](udp-migration-fullstack-2026-10-22.md) compares
+the original resolved Chronos 4.4.0 stack with both latest draft libraries.
+Unlike the experiments below, it does not hold Chronos constant.
+
 ## Method
 
 - Baseline: nim-lsquic `6622ec2fe12b5c5ac6dc6c1589be8a3a74e3742b`.
