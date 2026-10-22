@@ -4,6 +4,9 @@ The truncation address fix is independent of this performance experiment. This
 comparison measures the original nim-lsquic manual UDP drain implementation
 against the Chronos migration, not against ordinary per-packet Chronos delivery.
 
+The [profiling follow-up](udp-migration-profile-2026-10-22.md) records subsequent
+experiments and the remaining gap after two targeted receive-path changes.
+
 ## Method
 
 - Baseline: nim-lsquic `6622ec2fe12b5c5ac6dc6c1589be8a3a74e3742b`.

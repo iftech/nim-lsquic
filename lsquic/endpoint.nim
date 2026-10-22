@@ -188,6 +188,7 @@ proc routeDatagram(
 proc createUdp(
     endpoint: QuicEndpoint, address: TransportAddress, socketConfig: QuicSocketConfig
 ): DatagramTransport {.raises: [QuicError, TransportOsError].} =
+  var local: TransportAddress
   proc onReceive(
       udp: DatagramTransport,
       data: openArray[byte],
@@ -196,9 +197,6 @@ proc createUdp(
   ) {.gcsafe, raises: [].} =
     if error != OSErrorCode(0):
       warn "Failed to read UDP datagram", error = osErrorLabel(cint(error))
-      return
-    let local = udp.localAddress2().valueOr:
-      warn "Failed to read UDP local address", error = osErrorLabel(cint(error))
       return
     endpoint.receiveTargets.incl endpoint.routeDatagram(data, local, remote)
 
@@ -216,6 +214,8 @@ proc createUdp(
     onReceive, local = address, onDrain = onDrain, maxDatagrams = MaxDatagramsPerWakeup
   )
   try:
+    # The bound address is fixed for this socket's lifetime.
+    local = udp.localAddress()
     udp.configureReceiveBuffer(socketConfig)
   except TransportOsError as exc:
     udp.close()
