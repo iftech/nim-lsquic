@@ -1,0 +1,28 @@
+diff --git a/lsquic/context/io.nim b/lsquic/context/io.nim
+index 9cb3b19..bc0d437 100644
+--- a/lsquic/context/io.nim
++++ b/lsquic/context/io.nim
+@@ -64,18 +64,19 @@ proc sendPacketsOut*(
+   let specsArr = cast[ptr UncheckedArray[struct_lsquic_out_spec]](specs)
+   const BatchSize = 64
+   var
+-    packets: array[BatchSize, DatagramOut]
++    packets: array[BatchSize, DatagramNativeOut]
+     sent = 0
+   while sent < nspecs.int:
+     let count = min(packets.len, nspecs.int - sent)
+     for i in 0 ..< count:
+       let spec = specsArr[sent + i]
+-      packets[i] = DatagramOut(
+-        remote: spec.dest_sa.toTransportAddress(),
++      packets[i] = DatagramNativeOut(
++        remote: cast[ptr Sockaddr_storage](spec.dest_sa),
++        remoteLen: sockAddrLen(spec.dest_sa.sa_family.int),
+         buffers: cast[ptr UncheckedArray[DatagramBuffer]](spec.iov),
+         bufferCount: spec.iovlen.int,
+       )
+-    let res = quicCtx.udp.trySendBatch(packets.toOpenArray(0, count - 1))
++    let res = quicCtx.udp.trySendNativeBatch(packets.toOpenArray(0, count - 1))
+     sent += res.sent
+     if res.sent < count:
+       # lsquic owns unsent payloads. A short sendmmsg has no known error;

@@ -1,0 +1,134 @@
+diff --git a/chronos/transports/datagramdirect.nim b/chronos/transports/datagramdirect.nim
+index e85c282..bf0f6bd 100644
+--- a/chronos/transports/datagramdirect.nim
++++ b/chronos/transports/datagramdirect.nim
+@@ -14,6 +14,13 @@ type
+     buffers*: ptr UncheckedArray[DatagramBuffer]
+     bufferCount*: int
+ 
++  DatagramNativeOut* = object
++    unusedAddress: TransportAddress
++    remote*: ptr Sockaddr_storage
++    remoteLen*: SockLen
++    buffers*: ptr UncheckedArray[DatagramBuffer]
++    bufferCount*: int
++
+   DatagramSendResult* = object
+     ## sent counts complete datagrams accepted by the OS, not delivered peers.
+     ## error is zero on success or a short batch with no known failure reason.
+@@ -43,6 +50,13 @@ when not defined(windows):
+     result.msg_iov = cast[ptr native.IOVec](packet.buffers)
+     result.msg_iovlen = typeof(result.msg_iovlen)(packet.bufferCount)
+ 
++  proc prepareMessage(packet: DatagramNativeOut, storage: var Sockaddr_storage,
++                      addressLen: SockLen): native.Tmsghdr =
++    result.msg_name = addr storage
++    result.msg_namelen = native.SockLen(addressLen)
++    result.msg_iov = cast[ptr native.IOVec](packet.buffers)
++    result.msg_iovlen = typeof(result.msg_iovlen)(packet.bufferCount)
++
+ proc trySendBatch*(transp: DatagramTransport,
+                    packets: openArray[DatagramOut]): DatagramSendResult =
+   ## Attempt immediate nonblocking sends, without Futures, payload copies or
+@@ -128,3 +142,101 @@ proc trySendBatch*(transp: DatagramTransport,
+         result.error = error
+         return
+       inc result.sent
++
++proc trySendNativeBatch*(transp: DatagramTransport,
++                   packets: openArray[DatagramNativeOut]): DatagramSendResult =
++  ## Attempt immediate nonblocking sends, without Futures, payload copies or
++  ## queuing. Retry only packets[sent .. ^1]. A short batch with error == 0 has
++  ## an unknown stop reason; it must not be interpreted as a permanent failure.
++  ## EAGAIN/EWOULDBLOCK (WSAEWOULDBLOCK on Windows) means retry later, including
++  ## when queued sends are pending: direct sends never overtake that queue.
++  ## Payload fragments form one atomic datagram, not independent messages.
++  if packets.len == 0:
++    return
++  if transp.closed():
++    when defined(windows):
++      result.error = OSErrorCode(WSAENOTSOCK)
++    else:
++      result.error = OSErrorCode(oserrno.EBADF)
++    return
++  if transp.queue.len > 0:
++    when defined(windows):
++      result.error = OSErrorCode(WSAEWOULDBLOCK)
++    else:
++      result.error = OSErrorCode(oserrno.EAGAIN)
++    return
++
++  when defined(linux):
++    const BatchSize = 64
++    var
++      addresses: array[BatchSize, Sockaddr_storage]
++      messages: array[BatchSize, DatagramMMsg]
++    while result.sent < packets.len:
++      let count = min(BatchSize, packets.len - result.sent)
++      for i in 0 ..< count:
++        let packet = packets[result.sent + i]
++        doAssert packet.bufferCount >= 0
++        var addressLen: SockLen
++        if ServerFlags.V4Mapped in transp.flags and
++            int(cast[ptr SockAddr](packet.remote).sa_family) == int(native.AF_INET):
++          var remote: TransportAddress
++          fromSAddr(packet.remote, packet.remoteLen, remote)
++          discard transp.setRemoteAddress(remote)
++          addresses[i] = transp.waddr
++          addressLen = transp.walen
++        else:
++          addressLen = packet.remoteLen
++          doAssert int(addressLen) <= sizeof(Sockaddr_storage)
++          copyMem(addr addresses[i], packet.remote, int(addressLen))
++        messages[i].msg_hdr = prepareMessage(packet, addresses[i], addressLen)
++      let sent = sendmmsg(native.SocketHandle(transp.fd), addr messages[0],
++                          cuint(count), MSG_NOSIGNAL)
++      if sent < 0:
++        let error = osLastError()
++        if error == OSErrorCode(oserrno.EINTR):
++          continue
++        result.error = error
++        return
++      result.sent += int(sent)
++      if int(sent) < count:
++        return
++  else:
++    when defined(windows):
++      var
++        stackBuffers: array[64, WSABUF]
++        overflow: seq[WSABUF]
++    while result.sent < packets.len:
++      let packet = packets[result.sent]
++      doAssert packet.bufferCount >= 0
++      var remote: TransportAddress
++      fromSAddr(packet.remote, packet.remoteLen, remote)
++      discard transp.setRemoteAddress(remote)
++      when defined(windows):
++        let buffers =
++          if packet.bufferCount <= stackBuffers.len:
++            cast[ptr UncheckedArray[WSABUF]](addr stackBuffers[0])
++          else:
++            overflow.setLen(packet.bufferCount)
++            cast[ptr UncheckedArray[WSABUF]](addr overflow[0])
++        for i in 0 ..< packet.bufferCount:
++          buffers[i] = WSABUF(buf: cast[cstring](packet.buffers[i].base),
++                              len: ULONG(packet.buffers[i].len))
++        var bytes: DWORD
++        let sent = wsaSendTo(SocketHandle(transp.fd), addr buffers[0],
++          DWORD(packet.bufferCount), addr bytes, DWORD(0),
++          cast[ptr SockAddr](addr transp.waddr), cint(transp.walen), nil, nil)
++      else:
++        var msg = prepareMessage(packet, transp.waddr, transp.walen)
++        let sent = native.sendmsg(native.SocketHandle(transp.fd), addr msg,
++                                  MSG_NOSIGNAL)
++      if sent < 0:
++        let error = osLastError()
++        when defined(windows):
++          if error == OSErrorCode(WSAEINTR):
++            continue
++        else:
++          if error == OSErrorCode(oserrno.EINTR):
++            continue
++        result.error = error
++        return
++      inc result.sent

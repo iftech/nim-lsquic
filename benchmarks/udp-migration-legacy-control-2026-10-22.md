@@ -132,3 +132,5 @@ profile files per binary with `gprof -b -p` (flat) and `gprof -b -q` (call graph
 
 These results cover one Linux loopback workload, not physical-network,
 multi-connection, packet-loss, Windows or macOS performance.
+
+Follow-up: [send-path attribution experiments](udp-migration-send-attribution-2026-10-22.md) test the conversion cost in both directions and confirm a borrowed native-address candidate against the original UDP path.

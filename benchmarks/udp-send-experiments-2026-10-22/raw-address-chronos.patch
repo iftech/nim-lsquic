@@ -1,0 +1,41 @@
+diff --git a/chronos/transports/datagramdirect.nim b/chronos/transports/datagramdirect.nim
+index e85c282..71b3ca5 100644
+--- a/chronos/transports/datagramdirect.nim
++++ b/chronos/transports/datagramdirect.nim
+@@ -11,6 +11,8 @@ type
+ 
+   DatagramOut* = object
+     remote*: TransportAddress
++    rawRemote*: ptr Sockaddr_storage
++    rawRemoteLen*: SockLen
+     buffers*: ptr UncheckedArray[DatagramBuffer]
+     bufferCount*: int
+ 
+@@ -76,9 +78,24 @@ proc trySendBatch*(transp: DatagramTransport,
+       for i in 0 ..< count:
+         let packet = packets[result.sent + i]
+         doAssert packet.bufferCount >= 0
+-        discard transp.setRemoteAddress(packet.remote)
+-        addresses[i] = transp.waddr
+-        messages[i].msg_hdr = prepareMessage(packet, addresses[i], transp.walen)
++        var addressLen: SockLen
++        if packet.rawRemote != nil:
++          if ServerFlags.V4Mapped in transp.flags and
++              int(cast[ptr SockAddr](packet.rawRemote).sa_family) == int(native.AF_INET):
++            var remote: TransportAddress
++            fromSAddr(packet.rawRemote, packet.rawRemoteLen, remote)
++            discard transp.setRemoteAddress(remote)
++            addresses[i] = transp.waddr
++            addressLen = transp.walen
++          else:
++            addressLen = packet.rawRemoteLen
++            doAssert int(addressLen) <= sizeof(Sockaddr_storage)
++            copyMem(addr addresses[i], packet.rawRemote, int(addressLen))
++        else:
++          discard transp.setRemoteAddress(packet.remote)
++          addresses[i] = transp.waddr
++          addressLen = transp.walen
++        messages[i].msg_hdr = prepareMessage(packet, addresses[i], addressLen)
+       let sent = sendmmsg(native.SocketHandle(transp.fd), addr messages[0],
+                           cuint(count), MSG_NOSIGNAL)
+       if sent < 0:
