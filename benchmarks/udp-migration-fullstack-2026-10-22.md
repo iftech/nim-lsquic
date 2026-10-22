@@ -10,6 +10,10 @@ Earlier experiments held the Chronos dependency constant to isolate the
 nim-lsquic migration. They did not answer whether the complete proposed stack
 regresses against the original stack. This comparison addresses that limitation.
 
+The [three-way attribution follow-up](udp-migration-threeway-2026-10-22.md) adds
+old nim-lsquic on the unmodified Chronos PR base to separate the preceding
+dependency update from our combined PR changes.
+
 ## Compared stacks
 
 | Component | Before migration | Latest proposal |
