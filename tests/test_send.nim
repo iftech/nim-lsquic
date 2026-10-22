@@ -61,11 +61,13 @@ suite "packets out":
       payload = @[1'u8, 2, 3]
       localStorage = toSockaddrStorage(initTAddress("127.0.0.1:1000"))
       ipv4DestStorage = toSockaddrStorage(initTAddress("127.0.0.1:4433"))
-      ipv6DestStorage = toSockaddrStorage(initTAddress("[::1]:4433"))
+      oversized = newSeq[byte](65536)
       iov = struct_iovec(iov_base: addr payload[0], iov_len: payload.len.csize_t)
+      oversizedIov =
+        struct_iovec(iov_base: addr oversized[0], iov_len: oversized.len.csize_t)
       specs = [
         makeOutSpec(addr iov, addr localStorage, addr ipv4DestStorage),
-        makeOutSpec(addr iov, addr localStorage, addr ipv6DestStorage),
+        makeOutSpec(addr oversizedIov, addr localStorage, addr ipv4DestStorage),
       ]
 
     let res = sendPacketsOut(cast[pointer](ctx), addr specs[0], 2)
