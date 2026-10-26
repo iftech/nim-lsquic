@@ -156,7 +156,7 @@ type
     ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic_types.h:58:36
   struct_lsquic_http_headers* {.pure, inheritable, bycopy.} = object
     count*: cint
-      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1784:8
+      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1801:8
     headers*: ptr struct_lsxpack_header
 
   struct_lsquic_stream_if* {.pure, inheritable, bycopy.} = object
@@ -197,7 +197,7 @@ type
     ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:266:31
   struct_lsquic_engine_settings* {.pure, inheritable, bycopy.} = object
     es_versions*: cuint
-      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:504:8
+      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:509:8
     es_cfcw*: cuint
     es_sfcw*: cuint
     es_max_cfcw*: cuint
@@ -276,10 +276,11 @@ type
     es_send_verneg*: cint
     es_preferred_address*: array[24'i64, uint8]
     es_max_header_sets*: cuint
+    es_ping_without_streams*: cint
 
   struct_lsquic_out_spec* {.pure, inheritable, bycopy.} = object
     iov*: ptr struct_iovec
-      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1254:8
+      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1269:8
     iovlen*: csize_t
     local_sa*: ptr SockAddr
     dest_sa*: ptr SockAddr
@@ -294,12 +295,12 @@ type
 
   lsquic_packets_out_f* =
     proc(a0: pointer, a1: ptr struct_lsquic_out_spec, a2: cuint): cint {.cdecl.}
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1278:15
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1293:15
   struct_lsquic_shared_hash_if* {.pure, inheritable, bycopy.} = object
     shi_insert*: proc(
       a0: pointer, a1: pointer, a2: cuint, a3: pointer, a4: cuint, a5: time_t
     ): cint {.cdecl.}
-      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1288:8
+      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1303:8
     shi_delete*: proc(a0: pointer, a1: pointer, a2: cuint): cint {.cdecl.}
     shi_lookup*: proc(
       a0: pointer, a1: pointer, a2: cuint, a3: ptr pointer, a4: ptr cuint
@@ -311,18 +312,18 @@ type
     pmi_allocate*: proc(
       a0: pointer, a1: pointer, a2: ptr lsquic_conn_ctx_t, a3: cushort, a4: cschar
     ): pointer {.cdecl.}
-      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1326:8
+      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1341:8
     pmi_release*:
       proc(a0: pointer, a1: pointer, a2: pointer, a3: cschar): void {.cdecl.}
     pmi_return*: proc(a0: pointer, a1: pointer, a2: pointer, a3: cschar): void {.cdecl.}
 
   lsquic_cids_update_f* =
     proc(a0: pointer, a1: ptr pointer, a2: ptr lsquic_cid_t, a3: cuint): void {.cdecl.}
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1347:16
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1362:16
   struct_lsquic_hset_if* {.pure, inheritable, bycopy.} = object
     hsi_create_header_set*:
       proc(a0: pointer, a1: ptr lsquic_stream_t, a2: cint): pointer {.cdecl.}
-      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1365:8
+      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1380:8
     hsi_prepare_decode*: proc(
       a0: pointer, a1: ptr struct_lsxpack_header, a2: csize_t
     ): ptr struct_lsxpack_header {.cdecl.}
@@ -333,7 +334,7 @@ type
 
   struct_lsquic_engine_api* {.pure, inheritable, bycopy.} = object
     ea_settings*: ptr struct_lsquic_engine_settings
-      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1438:8
+      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1453:8
     ea_stream_if*: ptr struct_lsquic_stream_if
     ea_stream_if_ctx*: pointer
     ea_packets_out*: lsquic_packets_out_f
@@ -362,22 +363,22 @@ type
 
   struct_lsquic_reader* {.pure, inheritable, bycopy.} = object
     lsqr_read*: proc(a0: pointer, a1: pointer, a2: csize_t): csize_t {.cdecl.}
-      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1743:8
+      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1760:8
     lsqr_size*: proc(a0: pointer): csize_t {.cdecl.}
     lsqr_ctx*: pointer
 
   struct_lsquic_ext_http_prio* {.pure, inheritable, bycopy.} = object
     urgency*: uint8
-      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1953:8
+      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1970:8
     incremental*: cschar
 
   struct_lsquic_logger_if* {.pure, inheritable, bycopy.} = object
     log_buf*: proc(a0: pointer, a1: cstring, a2: csize_t): cint {.cdecl.}
-      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:2026:8
+      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:2043:8
 
   struct_lsquic_conn_info* {.pure, inheritable, bycopy.} = object
     lci_cwnd*: uint32
-      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:2250:8
+      ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:2267:8
     lci_pmtu*: uint32
     lci_rtt*: uint32
     lci_rttvar*: uint32
@@ -420,11 +421,11 @@ when 10 is static:
 else:
   let LSQUIC_MINOR_VERSION* = 10
     ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:29:9
-when 0 is static:
-  const LSQUIC_PATCH_VERSION* = 0
+when 2 is static:
+  const LSQUIC_PATCH_VERSION* = 2
     ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:30:9
 else:
-  let LSQUIC_PATCH_VERSION* = 0
+  let LSQUIC_PATCH_VERSION* = 2
     ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:30:9
 when 100 is static:
   const LSQUIC_DF_MAX_STREAMS_IN* = 100
@@ -523,390 +524,396 @@ when 15 is static:
 else:
   let LSQUIC_DF_PING_PERIOD* = 15
     ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:315:9
+when 0 is static:
+  const LSQUIC_DF_PING_WITHOUT_STREAMS* = 0
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:320:9
+else:
+  let LSQUIC_DF_PING_WITHOUT_STREAMS* = 0
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:320:9
 when 1 is static:
   const LSQUIC_DF_SILENT_CLOSE* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:323:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:328:9
 else:
   let LSQUIC_DF_SILENT_CLOSE* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:323:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:328:9
 when 0 is static:
   const LSQUIC_DF_MAX_HEADER_LIST_SIZE* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:329:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:334:9
 else:
   let LSQUIC_DF_MAX_HEADER_LIST_SIZE* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:329:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:334:9
 when 1 is static:
   const LSQUIC_DF_MAX_HEADER_SETS_SERVER* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:334:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:339:9
 else:
   let LSQUIC_DF_MAX_HEADER_SETS_SERVER* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:334:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:339:9
 when 2 is static:
   const LSQUIC_DF_MAX_HEADER_SETS_CLIENT* = 2
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:339:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:344:9
 else:
   let LSQUIC_DF_MAX_HEADER_SETS_CLIENT* = 2
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:339:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:344:9
 when "LSQUIC" is static:
   const LSQUIC_DF_UA* = "LSQUIC"
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:342:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:347:9
 else:
   let LSQUIC_DF_UA* = "LSQUIC"
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:342:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:347:9
 when 86400 is static:
   const LSQUIC_DF_STTL* = 86400
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:344:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:349:9
 else:
   let LSQUIC_DF_STTL* = 86400
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:344:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:349:9
 when 20 is static:
   const LSQUIC_DF_MAX_CRYPTO_STASH* = 20
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:347:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:352:9
 else:
   let LSQUIC_DF_MAX_CRYPTO_STASH* = 20
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:347:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:352:9
 when 1 is static:
   const LSQUIC_DF_SUPPORT_SREJ_SERVER* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:348:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:353:9
 else:
   let LSQUIC_DF_SUPPORT_SREJ_SERVER* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:348:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:353:9
 when 0 is static:
   const LSQUIC_DF_SUPPORT_SREJ_CLIENT* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:349:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:354:9
 else:
   let LSQUIC_DF_SUPPORT_SREJ_CLIENT* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:349:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:354:9
 when 0 is static:
   const LSQUIC_DF_SUPPORT_NSTP* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:352:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:357:9
 else:
   let LSQUIC_DF_SUPPORT_NSTP* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:352:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:357:9
 when 0 is static:
   const LSQUIC_DF_SUPPORT_PUSH* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:354:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:359:9
 else:
   let LSQUIC_DF_SUPPORT_PUSH* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:354:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:359:9
 when 1 is static:
   const LSQUIC_DF_SUPPORT_TCID0* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:355:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:360:9
 else:
   let LSQUIC_DF_SUPPORT_TCID0* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:355:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:360:9
 when 0 is static:
   const LSQUIC_DF_HONOR_PRST* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:357:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:362:9
 else:
   let LSQUIC_DF_HONOR_PRST* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:357:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:362:9
 when 0 is static:
   const LSQUIC_DF_SEND_PRST* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:363:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:368:9
 else:
   let LSQUIC_DF_SEND_PRST* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:363:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:368:9
 when 1 is static:
   const LSQUIC_DF_SEND_VERNEG* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:369:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:374:9
 else:
   let LSQUIC_DF_SEND_VERNEG* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:369:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:374:9
 when 1000 is static:
   const LSQUIC_DF_PROGRESS_CHECK* = 1000
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:372:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:377:9
 else:
   let LSQUIC_DF_PROGRESS_CHECK* = 1000
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:372:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:377:9
 when 0 is static:
   const LSQUIC_DF_RW_ONCE* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:375:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:380:9
 else:
   let LSQUIC_DF_RW_ONCE* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:375:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:380:9
 when 0 is static:
   const LSQUIC_DF_PROC_TIME_THRESH* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:378:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:383:9
 else:
   let LSQUIC_DF_PROC_TIME_THRESH* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:378:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:383:9
 when 1 is static:
   const LSQUIC_DF_PACE_PACKETS* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:381:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:386:9
 else:
   let LSQUIC_DF_PACE_PACKETS* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:381:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:386:9
 when 1000 is static:
   const LSQUIC_DF_CLOCK_GRANULARITY* = 1000
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:384:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:389:9
 else:
   let LSQUIC_DF_CLOCK_GRANULARITY* = 1000
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:384:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:389:9
 when 8 is static:
   const LSQUIC_DF_SCID_LEN* = 8
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:387:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:392:9
 else:
   let LSQUIC_DF_SCID_LEN* = 8
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:387:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:392:9
 when 60 is static:
   const LSQUIC_DF_SCID_ISS_RATE* = 60
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:390:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:395:9
 else:
   let LSQUIC_DF_SCID_ISS_RATE* = 60
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:390:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:395:9
 when 100 is static:
   const LSQUIC_DF_QPACK_DEC_MAX_BLOCKED* = 100
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:392:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:397:9
 else:
   let LSQUIC_DF_QPACK_DEC_MAX_BLOCKED* = 100
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:392:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:397:9
 when 4096 is static:
   const LSQUIC_DF_QPACK_DEC_MAX_SIZE* = 4096
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:393:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:398:9
 else:
   let LSQUIC_DF_QPACK_DEC_MAX_SIZE* = 4096
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:393:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:398:9
 when 100 is static:
   const LSQUIC_DF_QPACK_ENC_MAX_BLOCKED* = 100
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:394:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:399:9
 else:
   let LSQUIC_DF_QPACK_ENC_MAX_BLOCKED* = 100
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:394:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:399:9
 when 4096 is static:
   const LSQUIC_DF_QPACK_ENC_MAX_SIZE* = 4096
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:395:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:400:9
 else:
   let LSQUIC_DF_QPACK_ENC_MAX_SIZE* = 4096
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:395:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:400:9
 when 0 is static:
   const LSQUIC_DF_QPACK_EXPERIMENT* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:398:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:403:9
 else:
   let LSQUIC_DF_QPACK_EXPERIMENT* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:398:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:403:9
 when 0 is static:
   const LSQUIC_DF_ECN* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:401:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:406:9
 else:
   let LSQUIC_DF_ECN* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:401:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:406:9
 when 1 is static:
   const LSQUIC_DF_ALLOW_MIGRATION* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:404:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:409:9
 else:
   let LSQUIC_DF_ALLOW_MIGRATION* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:404:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:409:9
 when 10 is static:
   const LSQUIC_DF_RETRY_TOKEN_DURATION* = 10
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:407:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:412:9
 else:
   let LSQUIC_DF_RETRY_TOKEN_DURATION* = 10
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:407:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:412:9
 when 2 is static:
   const LSQUIC_DF_QL_BITS* = 2
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:410:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:415:9
 else:
   let LSQUIC_DF_QL_BITS* = 2
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:410:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:415:9
 when 1 is static:
   const LSQUIC_DF_SPIN* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:413:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:418:9
 else:
   let LSQUIC_DF_SPIN* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:413:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:418:9
 when 1 is static:
   const LSQUIC_DF_DELAYED_ACKS* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:416:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:421:9
 else:
   let LSQUIC_DF_DELAYED_ACKS* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:416:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:421:9
 when 3 is static:
   const LSQUIC_DF_PTPC_PERIODICITY* = 3
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:422:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:427:9
 else:
   let LSQUIC_DF_PTPC_PERIODICITY* = 3
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:422:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:427:9
 when 150 is static:
   const LSQUIC_DF_PTPC_MAX_PACKTOL* = 150
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:423:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:428:9
 else:
   let LSQUIC_DF_PTPC_MAX_PACKTOL* = 150
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:423:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:428:9
 when 1 is static:
   const LSQUIC_DF_PTPC_DYN_TARGET* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:424:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:429:9
 else:
   let LSQUIC_DF_PTPC_DYN_TARGET* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:424:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:429:9
 when 1.0 is static:
   const LSQUIC_DF_PTPC_TARGET* = 1.0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:425:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:430:9
 else:
   let LSQUIC_DF_PTPC_TARGET* = 1.0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:425:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:430:9
 when 0.8 is static:
   const LSQUIC_DF_PTPC_PROP_GAIN* = 0.8
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:426:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:431:9
 else:
   let LSQUIC_DF_PTPC_PROP_GAIN* = 0.8
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:426:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:431:9
 when 0.35 is static:
   const LSQUIC_DF_PTPC_INT_GAIN* = 0.35
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:427:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:432:9
 else:
   let LSQUIC_DF_PTPC_INT_GAIN* = 0.35
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:427:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:432:9
 when 0.05 is static:
   const LSQUIC_DF_PTPC_ERR_THRESH* = 0.05
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:428:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:433:9
 else:
   let LSQUIC_DF_PTPC_ERR_THRESH* = 0.05
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:428:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:433:9
 when 0.05 is static:
   const LSQUIC_DF_PTPC_ERR_DIVISOR* = 0.05
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:429:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:434:9
 else:
   let LSQUIC_DF_PTPC_ERR_DIVISOR* = 0.05
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:429:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:434:9
 when 1 is static:
   const LSQUIC_DF_TIMESTAMPS* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:432:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:437:9
 else:
   let LSQUIC_DF_TIMESTAMPS* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:432:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:437:9
 when 3 is static:
   const LSQUIC_DF_AMP_FACTOR* = 3
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:435:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:440:9
 else:
   let LSQUIC_DF_AMP_FACTOR* = 3
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:435:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:440:9
 when 3 is static:
   const LSQUIC_DF_CC_ALGO* = 3
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:438:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:443:9
 else:
   let LSQUIC_DF_CC_ALGO* = 3
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:438:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:443:9
 when 1500 is static:
   const LSQUIC_DF_CC_RTT_THRESH* = 1500
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:441:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:446:9
 else:
   let LSQUIC_DF_CC_RTT_THRESH* = 1500
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:441:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:446:9
 when 0 is static:
   const LSQUIC_DF_ENABLE_BW_SAMPLER* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:444:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:449:9
 else:
   let LSQUIC_DF_ENABLE_BW_SAMPLER* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:444:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:449:9
 when 0 is static:
   const LSQUIC_DF_DATAGRAMS* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:447:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:452:9
 else:
   let LSQUIC_DF_DATAGRAMS* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:447:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:452:9
 when 1 is static:
   const LSQUIC_DF_OPTIMISTIC_NAT* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:450:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:455:9
 else:
   let LSQUIC_DF_OPTIMISTIC_NAT* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:450:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:455:9
 when 1 is static:
   const LSQUIC_DF_EXT_HTTP_PRIO* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:453:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:458:9
 else:
   let LSQUIC_DF_EXT_HTTP_PRIO* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:453:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:458:9
 when 0 is static:
   const LSQUIC_DF_MAX_UDP_PAYLOAD_SIZE_RX* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:456:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:461:9
 else:
   let LSQUIC_DF_MAX_UDP_PAYLOAD_SIZE_RX* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:456:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:461:9
 when 1 is static:
   const LSQUIC_DF_GREASE_QUIC_BIT* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:462:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:467:9
 else:
   let LSQUIC_DF_GREASE_QUIC_BIT* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:462:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:467:9
 when 1 is static:
   const LSQUIC_DF_DPLPMTUD* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:465:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:470:9
 else:
   let LSQUIC_DF_DPLPMTUD* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:465:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:470:9
 when 0 is static:
   const LSQUIC_DF_BASE_PLPMTU* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:468:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:473:9
 else:
   let LSQUIC_DF_BASE_PLPMTU* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:468:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:473:9
 when 0 is static:
   const LSQUIC_DF_MAX_PLPMTU* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:471:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:476:9
 else:
   let LSQUIC_DF_MAX_PLPMTU* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:471:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:476:9
 when 60 is static:
   const LSQUIC_DF_NOPROGRESS_TIMEOUT_SERVER* = 60
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:474:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:479:9
 else:
   let LSQUIC_DF_NOPROGRESS_TIMEOUT_SERVER* = 60
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:474:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:479:9
 when 0 is static:
   const LSQUIC_DF_NOPROGRESS_TIMEOUT_CLIENT* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:477:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:482:9
 else:
   let LSQUIC_DF_NOPROGRESS_TIMEOUT_CLIENT* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:477:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:482:9
 when 1000 is static:
   const LSQUIC_DF_MTU_PROBE_TIMER* = 1000
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:480:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:485:9
 else:
   let LSQUIC_DF_MTU_PROBE_TIMER* = 1000
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:480:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:485:9
 when 0 is static:
   const LSQUIC_DF_DELAY_ONCLOSE* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:483:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:488:9
 else:
   let LSQUIC_DF_DELAY_ONCLOSE* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:483:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:488:9
 when 0 is static:
   const LSQUIC_DF_MAX_BATCH_SIZE* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:489:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:494:9
 else:
   let LSQUIC_DF_MAX_BATCH_SIZE* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:489:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:494:9
 when 32 is static:
   const LSQUIC_DF_MAX_DELAYED_0RTT_PACKETS* = 32
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:492:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:497:9
 else:
   let LSQUIC_DF_MAX_DELAYED_0RTT_PACKETS* = 32
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:492:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:497:9
 when 1 is static:
   const LSQUIC_DF_CHECK_TP_SANITY* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:495:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:500:9
 else:
   let LSQUIC_DF_CHECK_TP_SANITY* = 1
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:495:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:500:9
 when 7 is static:
   const LSQUIC_MAX_HTTP_URGENCY* = 7
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1949:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1966:9
 else:
   let LSQUIC_MAX_HTTP_URGENCY* = 7
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1949:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1966:9
 when 3 is static:
   const LSQUIC_DEF_HTTP_URGENCY* = 3
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1950:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1967:9
 else:
   let LSQUIC_DEF_HTTP_URGENCY* = 3
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1950:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1967:9
 when 0 is static:
   const LSQUIC_DEF_HTTP_INCREMENTAL* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1951:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1968:9
 else:
   let LSQUIC_DEF_HTTP_INCREMENTAL* = 0
-    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1951:9
+    ## Generated based on /home/r/vacp2p/nim-lsquic/libs/lsquic/include/lsquic.h:1968:9
 proc lsquic_engine_init_settings*(
   a0: ptr struct_lsquic_engine_settings, lsquic_engine_flags: cuint
 ): void {.cdecl, importc: "lsquic_engine_init_settings".}
