@@ -35,7 +35,7 @@ nimble install
 
 ### Requirements
 
-- Nim `>= 2.0.0`
+- Nim `>= 2.2.6` (CI tests 2.2.6 and 2.2.14)
 - A working C/C++ toolchain
 - `zlib`
 - On Windows, a Clang-compatible toolchain and `nasm` are required in CI

@@ -6,7 +6,7 @@ license = "MIT"
 installDirs = @["libs", "scripts"]
 installFiles = @["lsquic.nim"]
 
-requires "nim >= 2.0.0"
+requires "nim >= 2.2.6"
 requires "zlib"
 requires "stew >= 0.4.0"
 requires "chronos >= 4.0.4"

@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Nim via choosenim
-ENV CHOOSENIM_CHOOSE_VERSION=2.2.4
+ENV CHOOSENIM_CHOOSE_VERSION=2.2.14
 RUN curl https://nim-lang.org/choosenim/init.sh -sSf | bash -s -- -y
 ENV PATH="/root/.nimble/bin:${PATH}"
 
