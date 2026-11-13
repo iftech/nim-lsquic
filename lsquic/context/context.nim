@@ -34,7 +34,7 @@ type
     tlsConfig*: TLSConfig
     tickTimeout*: Timeout
     sslCtx*: ptr SSL_CTX
-    fd*: cint
+    udp*: DatagramTransport
     processing: bool
     flushScheduled: bool
     running*: bool
