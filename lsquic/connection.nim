@@ -152,6 +152,10 @@ proc openStream*(
   if connection.isClosed:
     raise newException(ConnectionClosedError, "connection closed")
 
+  let available = connection.quicConn.takeAvailableStream()
+  if available.isSome:
+    return available.get()
+
   let s = Stream.new()
   s.doProcess = proc(urgent: bool) {.gcsafe, raises: [].} =
     if urgent:

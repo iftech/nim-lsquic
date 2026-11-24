@@ -225,6 +225,7 @@ type QuicConnection* = ref object of RootObj
   incoming*: AsyncQueue[Stream]
   connectedFut*: Future[void]
   pendingStreams: Deque[PendingStream] = initDeque[PendingStream]()
+  availableStreams: Deque[Stream] = initDeque[Stream]()
   certChain*: seq[seq[byte]]
 
 type ClientContext* = ref object of QuicContext
@@ -265,8 +266,17 @@ proc popPendingStream*(
 
   let pending = quicConn.pendingStreams.popFirst()
   pending.stream.quicStream = stream
-  pending.created.complete()
+  if pending.created.cancelled():
+    quicConn.availableStreams.addLast(pending.stream)
+  else:
+    pending.created.complete()
   Opt.some(pending.stream)
+
+proc takeAvailableStream*(quicConn: QuicConnection): Opt[Stream] {.raises: [].} =
+  if quicConn.availableStreams.len == 0:
+    Opt.none(Stream)
+  else:
+    Opt.some(quicConn.availableStreams.popFirst())
 
 proc cancelPending*(quicConn: QuicConnection) =
   while quicConn.pendingStreams.len > 0:
@@ -280,6 +290,7 @@ proc cancelPending*(quicConn: QuicConnection) =
     if not pending.stream.closed.isSet():
       pending.stream.closed.fire()
     unpin(pending.stream)
+  quicConn.availableStreams.clear()
 
 proc alpnSelectProtoCB(
     ssl: ptr SSL,
