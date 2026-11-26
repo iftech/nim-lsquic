@@ -226,12 +226,14 @@ proc requestClose(stream: Stream): bool {.raises: [].} =
   true
 
 proc closeIfDone*(stream: Stream): bool {.raises: [].} =
-  if stream.closeWrite and stream.isEof:
+  if stream.closeWrite and (stream.isEof or stream.readResetByPeer()):
     return stream.requestClose()
 
   true
 
 proc abort*(stream: Stream) =
+  ## Fails local operations and closes the native stream. The peer may receive
+  ## FIN; use `reset` to abort the sending direction instead.
   stream.closeWrite = true
   stream.markReadFailed("stream aborted")
   stream.abortPendingWrites("stream aborted")
@@ -239,6 +241,14 @@ proc abort*(stream: Stream) =
   discard stream.requestClose()
   if not stream.closed.isSet():
     stream.closed.fire()
+
+proc reset*(stream: Stream) {.raises: [].} =
+  ## Aborts both directions, sending RESET_STREAM and STOP_SENDING where the
+  ## stream state permits. A sending side already closed with FIN stays closed.
+  if stream.canWrite and not stream.closedByEngine and not stream.quicStream.isNil and
+      not stream.closeRequested:
+    lsquic_stream_maybe_reset(stream.quicStream, 0, 1)
+  stream.abort()
 
 proc close*(stream: Stream) {.async: (raises: [StreamError, CancelledError]).} =
   if stream.closeWrite or stream.closedByEngine:
@@ -377,7 +387,7 @@ proc write*(
 
   raiseIfWriteReset(stream)
 
-  if stream.closedByEngine:
+  if stream.closeWrite or stream.closedByEngine:
     raise newException(StreamError, "stream closed")
 
   # Try to write immediately

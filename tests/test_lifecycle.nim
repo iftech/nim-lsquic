@@ -634,7 +634,49 @@ suite "lifecycle":
     check buf[0] == 99
     await incomingStream.close()
 
-  asyncTest "peer reset":
+  asyncTest "reset fails peer reads and writes without EOF":
+    let peers = await connectPeers()
+    defer:
+      await peers.stop()
+
+    let outgoingStream = await peers.outgoing.openStream()
+    await outgoingStream.write(@[1'u8])
+    let incomingStream = await peers.incoming.incomingStream()
+    var buf = newSeq[byte](1)
+    check (await incomingStream.readOnce(buf)) == 1
+    let reading = incomingStream.readOnce(buf)
+
+    outgoingStream.reset()
+    outgoingStream.reset()
+
+    expect StreamResetError:
+      discard await reading.wait(timeout)
+    check not incomingStream.isEof
+    expect StreamResetError:
+      await incomingStream.write(@[2'u8])
+
+  asyncTest "reset after FIN stops the remaining direction":
+    let peers = await connectPeers()
+    defer:
+      await peers.stop()
+
+    let outgoingStream = await peers.outgoing.openStream()
+    await outgoingStream.write(@[1'u8])
+    let incomingStream = await peers.incoming.incomingStream()
+    var buf = newSeq[byte](1)
+    check (await incomingStream.readOnce(buf)) == 1
+    await outgoingStream.close()
+    check (await incomingStream.readOnce(buf).wait(timeout)) == 0
+
+    let writing = incomingStream.write(makeData(16 * 1024 * 1024))
+    outgoingStream.reset()
+
+    expect StreamResetError:
+      await writing.wait(timeout)
+    check incomingStream.writeResetByPeer()
+    await incomingStream.closed.wait().wait(timeout)
+
+  asyncTest "abort closes peer reads and resets peer writes":
     let peers = await connectPeers()
     defer:
       await peers.stop()
@@ -1070,6 +1112,43 @@ suite "lifecycle":
       discard await readFut.wait(timeout)
     expect StreamError:
       await writeFut.wait(timeout)
+
+  asyncTest "write waiting for the write lock sees a local reset":
+    let stream = Stream.new()
+    defer:
+      onClose(nil, cast[ptr lsquic_stream_ctx_t](stream))
+    await stream.writeLock.acquire()
+    let writing = stream.write(@[1'u8])
+
+    stream.reset()
+    stream.writeLock.release()
+
+    expect StreamError:
+      await writing.wait(timeout)
+
+  asyncTest "reset settles pending and lock-waiting local operations":
+    let peers = await connectPeers()
+    defer:
+      await peers.stop()
+
+    let stream = await peers.outgoing.openStream()
+    var buf = newSeq[byte](1)
+    let reading = stream.readOnce(buf)
+    let writing = stream.write(makeData(16 * 1024 * 1024))
+    let nextWrite = stream.write(@[2'u8])
+    check stream.toWrite.isSome
+
+    stream.reset()
+
+    expect StreamError:
+      discard await reading.wait(timeout)
+    expect StreamError:
+      await writing.wait(timeout)
+    expect StreamError:
+      await nextWrite.wait(timeout)
+    check stream.closed.isSet()
+    check stream.toRead.isNone()
+    check stream.toWrite.isNone()
 
   asyncTest "connection close settles a parked write":
     let peers = await connectPeers()
