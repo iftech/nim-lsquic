@@ -34,6 +34,9 @@ proc onReset*(
   if streamCtx.writeResetByPeer():
     streamCtx.abortPendingWrites(streamCtx.newStreamResetError("stream write"))
 
+  if not streamCtx.closeIfDone():
+    streamCtx.abort()
+
 proc onClose*(stream: ptr lsquic_stream_t, ctx: ptr lsquic_stream_ctx_t) {.cdecl.} =
   trace "Stream closed by QUIC engine"
   if ctx.isNil:
